@@ -17,13 +17,22 @@
 - **Qué cambié o decidí yo:**
 > Claude propone incluir los anteriores puntos en el CLAUDE.md para el producto mínimo viable , decido incluirlos todos ya que me parece indispensable especialmente el tema de el horario de Colombia y la justificación de SQL.
 
-## Prompts más importantes
-### Prompt 1: [tema]
+### Prompt 2: [Diseño de datos, punto 2]
 - **Fecha y commit:**
+  > 4/11/2026, sobre el commit `6556878`
+- **Contexto:** antes de programar, la IA me preguntó cómo lo resolvería yo: por qué `EXCLUDE` evita los traslapes, qué columnas y restricciones tendrían las tablas, cómo cargar el esquema y dónde guardar los festivos. Esta fue mi respuesta.
 - **Texto literal:**
-  > ...
-- **Qué obtuve:**
+  > 1. exclude revisa al instante a que hora llega cada peticion , evitando que se traslapen y se agregue duplicado. 2. espacio , fecha , hora de inicio , hora de fin , número de asistentes y motivo. por otro lado supongo que tendriamos una lista con los usuarios , de ellos se tomaria la foreign key de identificacion , y de el tomamos los datos de solicitante y rol. además debe contener tambien estado , pendiente , confirmada, rechazada y cancelada. , debo además traer un calendario de festivos y domingos para quitarlos. es para colombia. y ponerlos como ocupados cuando esté por fuera del espacio de 7:00 13:00 sabados y de 7:00 a 21:00 de lunes a viernes. la cantidad de estudiantes no puede ser menor que 0 , el estado no puede ser vacio. la identificación diría yo que debe ser el código que ya trae. además estudiantes no pueden reservar auditorio pero eso se hace directamente en el codigo. el resto de las reglas igual.yo creo que si guardaria la fecha con diferentes columnas. 3. podria crear un contenedor con la base de datos y ejecutarla con npm o eso creo. yo guardaría los festivos en el código, pero cuidado , son los de colombia. entonces la idea es que consigamos el calendario de colombia y usemos esos siempre. se revisa la fecha actual se hace la validación y si no es festivo continúa, sencillo.
+- **Qué obtuve:** acerté en usar el código del espacio como identificador, en guardar los festivos en el código y en validar en el código que los estudiantes no reserven el auditorio. La IA me corrigió:
+  - `EXCLUDE` no mira la hora de llegada: se comprueba en el momento del `INSERT`. Dos `SELECT` simultáneos pueden ver el horario libre, y el segundo `INSERT` falla gracias a `EXCLUDE`.
+  - La tabla de usuarios sobra: la identificación viene de los encabezados y no hay inicio de sesión.
+  - "Asistentes no menor que 0" permitiría 0; R4 exige mínimo 1 (`CHECK (asistentes >= 1)`).
+  - "Estado no vacío" aceptaría cualquier texto; hace falta `CHECK (estado IN (...))`.
+  - `timestamptz` ya contiene la fecha; una columna `fecha` aparte repite el dato y complica `EXCLUDE`.
+  - El horario y los domingos son reglas puras del código (R2), no datos de la base de datos.
+  - Los festivos son los 6 del enunciado, no el calendario completo de Colombia, y se valida la **fecha de la reserva**, no la fecha actual.
 - **Qué cambié o decidí yo:**
+  > Decidí no crear una tabla de usuarios, guardar el rol como historial (la IA me mostró que ninguna regla lo lee, porque usan el rol del encabezado), guardar la fecha como columna generada para que nunca contradiga a `inicio`, y cargar los datos con un script de npm que se puede repetir. La IA escribió `schema.sql` y yo escribo `datos.sql`.
 
 ## Respuestas incorrectas de la IA
 | Qué propuso | Por qué estaba mal | Cómo lo noté | Cómo lo corregí |
