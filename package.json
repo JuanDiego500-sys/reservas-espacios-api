@@ -5,10 +5,14 @@
     "scripts": {
         "dev": "astro dev",
         "build": "astro build",
-        "start": "node ./dist/server/entry.mjs"
+        "start": "node ./dist/server/entry.mjs",
+        "test": "vitest run"
     },
     "dependencies": {
         "@astrojs/node": "^11.1.9",
         "astro": "^7.4.5"
+    },
+    "devDependencies": {
+        "vitest": "^5.1.0"
     }
 }
