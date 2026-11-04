@@ -50,7 +50,7 @@ Nota: en el punto 1 escribí estos archivos yo mismo, pero con pistas de la IA. 
 - Escrito por la IA a mi pedido: `tests/temporal.test.ts`, una prueba trivial que se borrará en el punto 5.
 - `db/datos.sql` (4/11/2026): completo, sin ayuda. La IA solo me dio la forma del `INSERT` con varias filas.
 - Script `db:cargar` de `package.json` (4/11/2026): la primera versión llamaba a psql sin pasarle ningún archivo. La IA me dio la primera mitad del comando (el esquema) y me explicó cada parte. La segunda mitad (los datos) y el `&&` los escribí yo. La IA me señaló un `>` que sobraba al final.
-- Escrito por la IA y explicado parte por parte: `db/schema.sql`.
+- Escrito por la IA y explicado parte por parte: `db/schema.sql`. El `CHECK (nombre <> '')` de `espacios` lo agregué yo como cambio sin ayuda (4/11/2026, 11:05). Primero puse solo `NOT NULL`, que acepta un texto vacío.
 
 ## Qué aprendí
 - `output: 'server'` y `adapter`: el primero hace que Astro atienda cada petición en el momento; el segundo define el runtime donde corre (Node, Vercel...). Aplicado en `astro.config.mjs`.
