@@ -7,4 +7,5 @@
 | 2026-11-04 10:14 | `npm run db`, `npm run db:cargar` y `SELECT codigo, activo FROM espacios;` | Éxito: tablas creadas e `INSERT 0 7`; 7 espacios con LAB-103 inactivo | d6f34fd | pendiente (`20261104_1014_carga_datos.mp4`) |
 | 2026-11-04 10:34 | `psql` interactivo: 4 `INSERT` y 1 `UPDATE` sobre LAB-101 el 10/11/2026 | Esperado: el traslape parcial (8–10 contra 9–11) falla por `reservas_sin_traslape`; la reserva contigua (10–12) y la CANCELADA que se cruza pasan; reactivar la CANCELADA como PENDIENTE falla. El id 2 queda sin usar | d6f34fd | pendiente (`20261104_1034_prueba_exclude.mp4`) |
 | 2026-11-04 11:05 | `npm run db:cargar` y en `psql`: `INSERT` de LAB-501 con nombre vacío | Esperado: falla con `violates check constraint "espacios_nombre_check"` | ff40972 | pendiente (`20261104_1105_check_nombre_vacio.mp4`) |
-| 2026-11-04 12:00 | `npm test` | Éxito: 8 pruebas de R3 pasaron (`tests/r3.test.ts`) | HASH | pendiente (`20261104_1200_pruebas_r3.mp4`) |
+| 2026-11-04 12:00 | `npm test` | Éxito: 8 pruebas de R3 pasaron (`tests/r3.test.ts`) | 51a40c9 | pendiente (`20261104_1200_pruebas_r3.mp4`) |
+| 2026-11-04 15:07 | `npm test` | Éxito: 12 pruebas pasaron (8 de R3 en `tests/r3.test.ts` y 4 de R6 en `tests/r6.test.ts`) | 4578323 | pendiente (`20261104_1507_pruebas_r6.mp4`) |
