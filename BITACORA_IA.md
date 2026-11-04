@@ -28,6 +28,7 @@
 ## Respuestas incorrectas de la IA
 | Qué propuso | Por qué estaba mal | Cómo lo noté | Cómo lo corregí |
 | --- | --- | --- | --- |
+| 3/11/2026: escribió `package.json`, `astro.config.mjs`, `tsconfig.json` y `.gitignore` justo después de que respondí las preguntas de configuración | No esperó mi decisión (paso 2 de CLAUDE.md) y siguió sin repasar mis dos respuestas incorrectas (el puerto y `npm build`) | Le pregunté por qué había creado todo sin consultarme | Borró los cuatro archivos y ahora los escribo yo con sus pistas |
 
 ## Partes escritas sin IA
 - [Archivo o función]: qué escribí y cuándo
