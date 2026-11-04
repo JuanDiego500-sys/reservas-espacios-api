@@ -39,6 +39,7 @@
 | --- | --- | --- | --- |
 | 3/11/2026: escribió `package.json`, `astro.config.mjs`, `tsconfig.json` y `.gitignore` justo después de que respondí las preguntas de configuración | No esperó mi decisión (paso 2 de CLAUDE.md) y siguió sin repasar mis dos respuestas incorrectas (el puerto y `npm build`) | Le pregunté por qué había creado todo sin consultarme | Borró los cuatro archivos y ahora los escribo yo con sus pistas |
 | 4/11/2026: agregó una fila a `EJECUCIONES.md` sin volver a leer el archivo | Yo ya había agregado esa fila en mi commit. Quedó duplicada y pegada a la anterior porque el archivo no terminaba en salto de línea, y la tabla se rompió | La IA lo vio al revisar el resultado de su propio cambio | Dejó una sola fila con la hora y el hash correctos |
+| 4/11/2026: para revisar mis tipos corrió `npx tsc --noEmit` sin preguntarme | CLAUDE.md prohíbe que la IA ejecute comandos. Además, TypeScript no está instalado como paquete aparte, y `npx` intentó descargar el paquete `tsc` de npm, que es otro paquete viejo y sin soporte, no el compilador | La IA lo informó al ver la advertencia en la salida | No se instaló nada en el proyecto (`package.json` sin cambios). Desde entonces la IA solo lee los archivos y me da los comandos |
 
 ## Partes escritas sin IA
 Nota: en el punto 1 escribí estos archivos yo mismo, pero con pistas de la IA. La IA no los escribió, aunque sí me dio algunos fragmentos cuando dije que no sabía.
@@ -51,6 +52,9 @@ Nota: en el punto 1 escribí estos archivos yo mismo, pero con pistas de la IA. 
 - `db/datos.sql` (4/11/2026): completo, sin ayuda. La IA solo me dio la forma del `INSERT` con varias filas.
 - Script `db:cargar` de `package.json` (4/11/2026): la primera versión llamaba a psql sin pasarle ningún archivo. La IA me dio la primera mitad del comando (el esquema) y me explicó cada parte. La segunda mitad (los datos) y el `&&` los escribí yo. La IA me señaló un `>` que sobraba al final.
 - Escrito por la IA y explicado parte por parte: `db/schema.sql`. El `CHECK (nombre <> '')` de `espacios` lo agregué yo como cambio sin ayuda (4/11/2026, 11:05). Primero puse solo `NOT NULL`, que acepta un texto vacío.
+- `src/reglas/festivos.ts` (4/11/2026): completo, sin ayuda.
+- `src/reglas/tipos.ts` y `src/reglas/r3.ts` (4/11/2026): los escribí yo después de que la IA me explicó los tipos de TypeScript con un ejemplo de otra cosa (citas médicas). La IA me hizo ver dos errores: solo revisaba los minutos del inicio (lo encontré recorriendo la prueba 2 a mano) y usaba `getMinutes()` en vez de `getUTCMinutes()`.
+- Escrito por la IA con los casos que acordamos: `tests/r3.test.ts`. Yo cambié el nombre de la función importada.
 
 ## Qué aprendí
 - `output: 'server'` y `adapter`: el primero hace que Astro atienda cada petición en el momento; el segundo define el runtime donde corre (Node, Vercel...). Aplicado en `astro.config.mjs`.
@@ -61,3 +65,6 @@ Nota: en el punto 1 escribí estos archivos yo mismo, pero con pistas de la IA. 
 - `CHECK` debe expresar la regla exacta: `asistentes >= 1` y `estado IN (...)`, no "mayor que 0" ni "no vacío".
 - Columna generada frente a columna normal: la generada la calcula PostgreSQL y no puede contradecir a `inicio`.
 - `psql -v ON_ERROR_STOP=1`: sin esta opción psql sigue después de un error y termina con código 0. `<` envía un archivo como entrada y `>` escribe la salida en un archivo.
+- TypeScript: anotaciones de tipo (`: number`), `type` para describir la forma de un objeto, `| null` para "esto o nada", `export` e `import type`. TypeScript también deduce los tipos solo (inferencia).
+- `getMinutes()` depende de la zona horaria del computador; `getUTCMinutes()` no. Como Bogotá está a −5 horas exactas, los minutos UTC coinciden con los de Bogotá.
+- Recorrer el código a mano con los datos de una prueba sirve para encontrar errores sin ejecutarlo.
