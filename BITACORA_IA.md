@@ -47,10 +47,16 @@ Nota: en el punto 1 escribí estos archivos yo mismo, pero con pistas de la IA. 
 - `.gitignore` (3/11/2026): con la tabla de nombres que me dio la IA.
 - `docker-compose.yml` (3/11/2026): servicio, imagen, variables y volumen. La IA me dio la sintaxis de `ports`.
 - Escrito por la IA a mi pedido: `tests/temporal.test.ts`, una prueba trivial que se borrará en el punto 5.
+- `db/datos.sql` (4/11/2026): completo, sin ayuda. La IA solo me dio la forma del `INSERT` con varias filas.
+- Script `db:cargar` de `package.json` (4/11/2026): la primera versión llamaba a psql sin pasarle ningún archivo. La IA me dio la primera mitad del comando (el esquema) y me explicó cada parte. La segunda mitad (los datos) y el `&&` los escribí yo. La IA me señaló un `>` que sobraba al final.
+- Escrito por la IA y explicado parte por parte: `db/schema.sql`.
 
 ## Qué aprendí
 - `output: 'server'` y `adapter`: el primero hace que Astro atienda cada petición en el momento; el segundo define el runtime donde corre (Node, Vercel...). Aplicado en `astro.config.mjs`.
 - `npm run build` solo compila en `dist/`; `npm start` corre lo compilado; `npm run dev` levanta un servidor que se recarga al guardar.
 - `dependencies` frente a `devDependencies`: Vitest solo hace falta para desarrollar (`npm install -D`).
 - Exportaciones con nombre (`import { defineConfig }`) frente a la exportación por defecto (`import node`).
-- Docker Compose: PostgreSQL usa el puerto 5432; los datos persisten en un volumen; las variables `POSTGRES_*` solo se aplican con el volumen vacío y para cambiarlas hay que usar `docker compose down -v`.
+- Docker Compose: PostgreSQL usa el puerto 5432; los datos persisten en un volumen; las variables `POSTGRES_*` solo se aplican con el volumen vacío y para cambiarlas hay que usar `docker compose down -v`.- `EXCLUDE` frente a un `SELECT` previo: dos peticiones simultáneas pueden ver el horario libre con el `SELECT`; `EXCLUDE` se comprueba en el `INSERT` y el segundo falla. El rango `[inicio, fin)` permite reservas contiguas.
+- `CHECK` debe expresar la regla exacta: `asistentes >= 1` y `estado IN (...)`, no "mayor que 0" ni "no vacío".
+- Columna generada frente a columna normal: la generada la calcula PostgreSQL y no puede contradecir a `inicio`.
+- `psql -v ON_ERROR_STOP=1`: sin esta opción psql sigue después de un error y termina con código 0. `<` envía un archivo como entrada y `>` escribe la salida en un archivo.

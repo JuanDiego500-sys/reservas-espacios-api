@@ -22,3 +22,26 @@
 ## 4. Zona horaria de Bogotá con un desfase fijo de `-05:00`
 - **Alternativas:** una librería de fechas (date-fns-tz, Luxon), la API `Intl` de JavaScript o un desfase fijo.
 - **Decisión:** desfase fijo de `-05:00`. Colombia no tiene horario de verano, así que el desfase nunca cambia, y no se agregan dependencias. Las fechas se guardan como `timestamptz` en PostgreSQL.
+
+## 5. Sin tabla de usuarios
+- **Contexto:** el enunciado no pide inicio de sesión; el solicitante y el rol llegan en los encabezados `X-Usuario` y `X-Rol`.
+- **Alternativas:** una tabla `usuarios` con llave foránea desde `reservas`, o guardar el correo del solicitante como texto en la reserva.
+- **Decisión:** guardar el correo como texto (`solicitante`). Una tabla de usuarios obligaría a cargarlos, validarlos y mantenerlos sin que ninguna regla lo necesite. Si después hubiera inicio de sesión real, se agregaría la tabla.
+
+## 6. Festivos como constante en el código
+- **Alternativas:** una tabla `festivos` en PostgreSQL, una librería con el calendario de Colombia o una constante en `src/reglas/`.
+- **Decisión:** una constante con los 6 festivos del enunciado. R2 queda como una función pura que se prueba sin base de datos. No se usa el calendario completo de Colombia: la fuente de verdad es el enunciado, y con el máximo de 30 días de R6 solo importan esas fechas. Se valida la fecha de la reserva, no la fecha actual.
+
+## 7. Carga del esquema y los datos con un script de npm
+- **Alternativas:** montar `db/` en `/docker-entrypoint-initdb.d` del contenedor, o un script de npm que envía `db/schema.sql` y `db/datos.sql` a `psql` dentro del contenedor.
+- **Decisión:** el script de npm (`npm run db:cargar`). Se puede repetir cuando se quiera, porque borra y recrea las tablas. Con `initdb.d` los archivos solo se ejecutan la primera vez que se crea el volumen y para recargar hay que borrarlo con `docker compose down -v`.
+
+## 8. Fecha de la reserva como columna generada
+- **Contexto:** la petición trae fecha, hora de inicio y hora de fin; `inicio` y `fin` se guardan como `timestamptz`, que ya contienen la fecha.
+- **Alternativas:** no guardar la fecha (se calcula en cada consulta), guardarla en una columna normal o en una columna generada.
+- **Decisión:** columna generada: `fecha` = día de `inicio` en America/Bogota. PostgreSQL la calcula y nadie puede escribirla, así que nunca contradice a `inicio`. Una columna normal permitiría guardar una fecha distinta a la de `inicio`. La columna simplifica el filtro por fecha de `GET /reservas`.
+
+## 9. Guardar el rol del solicitante en la reserva
+- **Contexto:** ninguna regla lee el rol guardado: R5, R7 y R8 usan el rol de quien hace la petición (encabezado `X-Rol`), y R5 cuenta las reservas activas por correo.
+- **Alternativas:** guardarlo o no guardarlo.
+- **Decisión:** guardarlo como historial, para saber con qué rol se pidió cada reserva y poder analizarlo más adelante. Solo cuesta una columna con un `CHECK`.
