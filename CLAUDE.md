@@ -29,7 +29,9 @@ docs/            Enunciado y ejemplos curl
 ## Criterios técnicos
 - La hora actual siempre entra como parámetro (`ahora: Date`). `new Date()` solo se usa en los endpoints.
 - Todas las reglas de horario se evalúan en America/Bogota. Inicio y fin se guardan como `timestamptz`.
+- Bogotá no tiene horario de verano: se usa el desfase fijo `-05:00`, sin librerías de fechas (documentarlo en `DECISIONES.md`).
 - R1 se valida en el servicio para responder con claridad y en PostgreSQL con una restricción `EXCLUDE`, para resistir peticiones simultáneas.
+- La restricción `EXCLUDE` necesita la extensión `btree_gist` de PostgreSQL (`CREATE EXTENSION` en `schema.sql`). Es una extensión de la base de datos, no un paquete npm.
 - Crear una reserva ocurre dentro de una transacción.
 - Los errores de regla responden `{"regla": "R4", "mensaje": "..."}` con un código HTTP adecuado.
 - Las reservas PENDIENTE y CONFIRMADA bloquean el horario. Las RECHAZADA y CANCELADA no.
@@ -46,6 +48,7 @@ docs/            Enunciado y ejemplos curl
 
 ## Lo que nunca debes hacer
 - No ejecutes la aplicación, pruebas, migraciones ni scripts: dame el comando, yo lo corro y lo grabo.
+  Cada grabación se nombra `AAAAMMDD_HHMM_descripcion.mp4` y muestra el comando, la salida completa y el reloj del sistema. También se graban las ejecuciones que fallan.
 - No hagas commits: propón un mensaje corto y yo lo hago.
 - No marques casillas del checklist: las marco yo.
 - No avances al siguiente punto sin mi confirmación.
@@ -63,11 +66,11 @@ Si crees que algo de esto hace falta, avísame antes de implementarlo.
 Una casilla se marca solo si funciona, la ejecución quedó grabada y yo puedo explicar el código.
 
 ### 1. Base del proyecto
-- [ ] Repositorio privado con acceso para el evaluador y carpeta de grabaciones compartida
+- [ ] Repositorio privado con acceso para dir_tecnologias@umanizales.edu.co y carpeta de grabaciones compartida
 - [ ] Astro en modo servidor con TypeScript
 - [ ] `docker-compose.yml` con PostgreSQL
 - [ ] `npm test` funcionando con Vitest
-- [ ] Decidido cómo cumplir las rutas del enunciado, ya que `src/pages/api/` publica bajo `/api` (documentarlo)
+- [ ] Decidido cómo cumplir las rutas del enunciado, ya que `src/pages/api/` publica bajo `/api` (documentarlo). Opciones: aceptar y documentar el prefijo `/api`, usar `rewrites` de Astro o usar un middleware
 
 ### 2. Datos
 - [ ] Tablas de espacios y reservas con sus restricciones
@@ -110,6 +113,7 @@ Una casilla se marca solo si funciona, la ejecución quedó grabada y yo puedo e
 - [ ] R6: justo en 24 horas, justo por debajo, justo en 30 días y justo por encima
 - [ ] R7: límite de 2 horas y permisos, con hora inyectada
 - [ ] R2, R4, R5 y R8: al menos un caso válido y uno inválido por regla
+- [ ] R2 en el límite: fin exactamente a las 21:00 (válido), sábado hasta las 13:00 (válido), inicio a las 6:30 (inválido)
 
 ### 8. Situaciones no definidas
 - [ ] Reserva de un espacio inactivo
@@ -119,6 +123,13 @@ Una casilla se marca solo si funciona, la ejecución quedó grabada y yo puedo e
 - [ ] Aprobación de una reserva cuya fecha ya pasó
 - [ ] Prioridad de errores cuando se incumplen varias reglas
 - [ ] Encabezados ausentes o con valores inválidos
+- [ ] Formato de los errores que no son de regla (validación, 404, 409): qué va en `"regla"`
+- [ ] Validación del cuerpo: campos faltantes, formato de fecha y hora, asistentes no enteros, motivo vacío
+- [ ] Cancelar una reserva que ya está CANCELADA o RECHAZADA
+- [ ] Disponibilidad de un espacio inactivo, en domingo o festivo, en fecha pasada, y si tiene en cuenta R6
+- [ ] Quién puede consultar `GET /reservas`: todos los roles o el estudiante solo las suyas
+- [ ] `POST /espacios` con código duplicado y valores válidos de tipo (LAB, SALA, AUDITORIO)
+- [ ] Preguntas enviadas por correo al evaluador antes del jueves a las 5:00 p. m.
 
 ### 9. Ajuste del jueves
 - [ ] Requisito analizado: qué cambia y qué partes afecta
@@ -127,7 +138,7 @@ Una casilla se marca solo si funciona, la ejecución quedó grabada y yo puedo e
 
 ### 10. Entregables
 - [ ] `README.md` probado desde cero en menos de 5 minutos
-- [ ] `DECISIONES.md` con mínimo 5 decisiones y sus alternativas
+- [ ] `DECISIONES.md` con mínimo 5 decisiones y sus alternativas, incluida la justificación de SQL plano frente a un ORM
 - [ ] `BITACORA_IA.md` con herramientas, 5 a 10 prompts literales, errores de la IA y partes escritas sin IA
 - [ ] `EJECUCIONES.md` con una fila por grabación
 - [ ] Colección de ejemplos curl
