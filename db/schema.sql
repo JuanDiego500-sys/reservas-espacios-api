@@ -11,7 +11,7 @@ DROP TABLE IF EXISTS espacios;
 
 CREATE TABLE espacios (
   codigo     text    PRIMARY KEY,
-  nombre     text    NOT NULL,
+  nombre     text    NOT NULL CHECK (nombre <> ''),
   tipo       text    NOT NULL CHECK (tipo IN ('LAB', 'SALA', 'AUDITORIO')),
   capacidad  integer NOT NULL CHECK (capacidad > 0),
   activo     boolean NOT NULL DEFAULT true
