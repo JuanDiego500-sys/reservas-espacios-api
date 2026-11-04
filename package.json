@@ -7,7 +7,8 @@
         "build": "astro build",
         "start": "node ./dist/server/entry.mjs",
         "test": "vitest run",
-        "db": "docker compose up -d"
+        "db": "docker compose up -d",
+        "db:cargar": "docker compose exec -T db psql -U reservas -d reservas -v ON_ERROR_STOP=1 <db/schema.sql && docker compose exec -T db psql -U reservas -d reservas -v ON_ERROR_STOP=1 <db/datos.sql"
     },
     "dependencies": {
         "@astrojs/node": "^11.1.9",
