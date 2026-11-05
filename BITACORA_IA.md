@@ -118,6 +118,7 @@
 | 5/11/2026: escribió los 8 casos de `tests/r5.test.ts` y solo probó "la reserva ya terminó" con CONFIRMADA | Mi `filter` tenía un error de precedencia (`PENDIENTE \|\| CONFIRMADA && fin > ahora`) que cuenta como activas las PENDIENTE pasadas. Las 8 pruebas pasaban igual | La IA lo vio al leer mi código después de que las 47 pruebas salieran en verde | Agregó la prueba 9 (2 PENDIENTE ya terminadas). La grabé fallando a las 10:58, puse los paréntesis y la grabé pasando |
 | 5/11/2026: propuso un orden de prioridad con el auditorio de R5 en el primer lugar y el máximo de activas de R5 en el sexto | Mi `validarRegla5` revisa las dos partes en una sola llamada, con la firma que la misma IA había propuesto. Ese orden no se podía cumplir sin partir la función | La IA lo notó al escribir la decisión 17 | Las dos partes de R5 van primero, con el mismo argumento: dependen de quién pide y no de las horas |
 | 5/11/2026: en la decisión 13 escribió que una reserva ajena responde "403 (R7)" | Contradecía la tabla de códigos aprobada después, donde R7 responde 422 | La IA lo vio al escribir la tabla de la decisión 18 | Cambió la decisión 13 a 422 y me lo informó |
+| 5/11/2026: me pidió correr `npx tsc --noEmit` en R5, R7 y `validarReserva` | TypeScript no estaba instalado en el proyecto (ya estaba anotado en esta bitácora el 4/11), así que `npx` respondió "This is not the tsc command you are looking for" en vez de revisar los tipos | Lo vi yo al correrlo y le pegué la salida | Aprobé `npm install -D typescript` (commit `b8c619e`). `tsc` sin errores no imprime nada |
 
 ## Partes escritas sin IA
 Nota: en el punto 1 escribí estos archivos yo mismo, pero con pistas de la IA. La IA no los escribió, aunque sí me dio algunos fragmentos cuando dije que no sabía.
@@ -155,6 +156,15 @@ Nota: en el punto 1 escribí estos archivos yo mismo, pero con pistas de la IA. 
   - exactamente 2 horas antes es válido;
   - el ADMINISTRATIVO cancela sin plazo. Al principio dije que el plazo también le aplicaba y después cambié de opinión.
 - Escritos por la IA con los casos que acordamos: `tests/r5.test.ts`, `tests/r7.test.ts` y `tests/validar.test.ts`.
+- `src/reglas/validar.ts` (5/11/2026): con pistas. La IA me dio la firma y la primera llamada como ejemplo del patrón `let error` / `if (error) return error`; el resto lo escribí yo. En el tipo de la solicitud corregí que me faltaba `asistentes`, que `espacio` era solo el tipo y que sobraba `solicitante`.
+- `src/reglas/serie.ts` (5/11/2026): con pistas, paso por paso. La IA me desglosó `validarFechasSerie` en 7 pasos sin darme la solución. Errores que corregí:
+  - `generarFechas` empezaba en `i = 1` y perdía la primera fecha;
+  - `validarSerie` no revisaba que las semanas fueran enteras;
+  - en la copia de la solicitud puse `solicitud` sin `...` (quedaba anidada) y `omitirR6` copiado de la original;
+  - llamaba a `validarReserva` con `new Date()` en vez de `ahora`.
+
+  Elegí escribir la copia campo por campo en vez de usar spread: si el tipo cambia, TypeScript avisa. Escritos por la IA con los casos que acordamos: `tests/serie.test.ts`.
+- Comentarios del código en `src/reglas/` (5/11/2026): los escribió la IA a mi pedido (commit `1207ab1` y el de `serie.ts`). Son JSDoc por función con la referencia a cada decisión y comentarios en las líneas donde el porqué no es obvio. No cambian el código.
 
 ## Qué aprendí
 - `output: 'server'` y `adapter`: el primero hace que Astro atienda cada petición en el momento; el segundo define el runtime donde corre (Node, Vercel...). Aplicado en `astro.config.mjs`.
