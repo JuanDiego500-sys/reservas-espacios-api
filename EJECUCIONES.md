@@ -9,3 +9,6 @@
 | 2026-11-04 11:05 | `npm run db:cargar` y en `psql`: `INSERT` de LAB-501 con nombre vacío | Esperado: falla con `violates check constraint "espacios_nombre_check"` | ff40972 | pendiente (`20261104_1105_check_nombre_vacio.mp4`) |
 | 2026-11-04 12:00 | `npm test` | Éxito: 8 pruebas de R3 pasaron (`tests/r3.test.ts`) | 51a40c9 | pendiente (`20261104_1200_pruebas_r3.mp4`) |
 | 2026-11-04 15:07 | `npm test` | Éxito: 12 pruebas pasaron (8 de R3 en `tests/r3.test.ts` y 4 de R6 en `tests/r6.test.ts`) | 4578323 | pendiente (`20261104_1507_pruebas_r6.mp4`) |
+| 2026-11-04 16:17 | `npm test` | Éxito: 20 pruebas pasaron (8 de R3, 4 de R6 y 8 de R1 en `tests/r1.test.ts`) | 0be7696 | pendiente (`20261104_1617_pruebas_r1.mp4`) |
+| 2026-11-04 19:48 | `npm test` | Éxito: 25 pruebas pasaron (8 de R3, 4 de R6, 8 de R1 y 5 de R4 en `tests/r4.test.ts`) | 5c3df09 | pendiente (`20261104_1948_pruebas_r4.mp4`) |
+| 2026-11-04 20:18 | `npm test` | Éxito: 28 pruebas pasaron (8 de R3, 4 de R6, 8 de R1, 5 de R4 y 3 de R8 en `tests/r8.test.ts`) | 8b54b99 | pendiente (`20261104_2018_pruebas_r8.mp4`) |

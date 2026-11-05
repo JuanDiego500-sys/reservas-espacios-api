@@ -3,7 +3,7 @@
 ## Herramientas usadas
 | Herramienta | Para qué la usé |
 | --- | --- |
-| Claude Code | Guía paso a paso del punto 1: pistas para escribir la configuración, revisión de mis archivos y registro de ejecuciones |
+| Claude Code | Guía paso a paso: pistas para escribir la configuración y las reglas, explicación de conceptos, pruebas de Vitest con los casos que acordamos, revisión de mis archivos y registro de ejecuciones |
 | Claude (chat) | Planificación, CLAUDE.md y corrección del enunciado en Markdown |
 
 ## Prompts más importantes
@@ -34,12 +34,43 @@
 - **Qué cambié o decidí yo:**
   > Decidí no crear una tabla de usuarios, guardar el rol como historial (la IA me mostró que ninguna regla lo lee, porque usan el rol del encabezado), guardar la fecha como columna generada para que nunca contradiga a `inicio`, y cargar los datos con un script de npm que se puede repetir. La IA escribió `schema.sql` y yo escribo `datos.sql`.
 
+### Prompt 3: [R6, qué significa "30 días"]
+- **Fecha y commit:**
+  > 4/11/2026, antes del commit `4578323`
+- **Contexto:** la IA redactó la pregunta del correo al evaluador sobre R6 diciendo que contaba los días "como 30 × 24 horas".
+- **Texto literal:**
+  > 30 × 24 horas este por ejemplo tampoco lo entiendo
+- **Qué obtuve:** un ejemplo concreto: si solicito el 4/11 a las 3:00 p. m., ¿puedo reservar el 4/12 a las 6:00 p. m.? Con horas exactas (720 h) no; contando el día completo, sí. La IA reconoció que antes había dicho que "30 × 24 horas da lo mismo que 30 días de calendario", lo cual era impreciso justo en el último día.
+- **Qué cambié o decidí yo:**
+  > Decidí contar 720 horas exactas y que los límites exactos (24 h y 30 días) son válidos. Reescribí con mis palabras las preguntas del correo y lo envié.
+
+### Prompt 4: [R1, qué datos recibe la regla]
+- **Fecha y commit:**
+  > 4/11/2026, antes del commit `0be7696`
+- **Contexto:** la IA propuso un tipo `ReservaExistente` con solo `inicio`, `fin` y `estado`.
+- **Texto literal:**
+  > no vamos a incluir en este tipo el esquema completo de reservas? no es necesario?
+- **Qué obtuve:** una función debe pedir solo lo que usa; con el esquema completo cada prueba tendría que inventar datos que R1 no mira. TypeScript compara la forma de los objetos (tipado estructural), así que una reserva completa también sirve donde se pide `ReservaExistente`. Me propuso `EstadoReserva` con los 4 valores en vez de `string`.
+- **Qué cambié o decidí yo:**
+  > Elegí el tipo pequeño con `EstadoReserva`, para que el estado se vea como en la base de datos y TypeScript detecte un estado mal escrito.
+
+### Prompt 5: [R8, decidir por tipo o por código]
+- **Fecha y commit:**
+  > 4/11/2026, antes del commit `8b54b99`
+- **Contexto:** la IA propuso que R8 reciba el tipo del espacio. Yo quería usar el código.
+- **Texto literal:**
+  > el tema de que use el tipo como retorno no me queda, pienso que si retorno el codigo evito confusiones con otras salas que tengan el mismo tipo , por que es mejor opcion el tipo entonces?
+- **Qué obtuve:** estaba confundiendo lo que entra (el tipo) con lo que sale (el estado). La regla habla de "el auditorio" como clase de espacio: si un ADMINISTRATIVO crea `AUD-002`, decidir por `codigo === 'AUD-001'` lo dejaría confirmar sin aprobación.
+- **Qué cambié o decidí yo:**
+  > Usé el tipo y creé yo mismo `TipoEspacio` en `tipos.ts`. Escribí `r8.ts` con pistas; la primera versión comparaba `TipoEspacio` (el tipo, no el valor) con `==` y devolvía `null`.
+
 ## Respuestas incorrectas de la IA
 | Qué propuso | Por qué estaba mal | Cómo lo noté | Cómo lo corregí |
 | --- | --- | --- | --- |
 | 3/11/2026: escribió `package.json`, `astro.config.mjs`, `tsconfig.json` y `.gitignore` justo después de que respondí las preguntas de configuración | No esperó mi decisión (paso 2 de CLAUDE.md) y siguió sin repasar mis dos respuestas incorrectas (el puerto y `npm build`) | Le pregunté por qué había creado todo sin consultarme | Borró los cuatro archivos y ahora los escribo yo con sus pistas |
 | 4/11/2026: agregó una fila a `EJECUCIONES.md` sin volver a leer el archivo | Yo ya había agregado esa fila en mi commit. Quedó duplicada y pegada a la anterior porque el archivo no terminaba en salto de línea, y la tabla se rompió | La IA lo vio al revisar el resultado de su propio cambio | Dejó una sola fila con la hora y el hash correctos |
 | 4/11/2026: para revisar mis tipos corrió `npx tsc --noEmit` sin preguntarme | CLAUDE.md prohíbe que la IA ejecute comandos. Además, TypeScript no está instalado como paquete aparte, y `npx` intentó descargar el paquete `tsc` de npm, que es otro paquete viejo y sin soporte, no el compilador | La IA lo informó al ver la advertencia en la salida | No se instaló nada en el proyecto (`package.json` sin cambios). Desde entonces la IA solo lee los archivos y me da los comandos |
+| 4/11/2026: dijo que contar 30 días como 30 × 24 horas "da lo mismo que 30 días de calendario" porque Bogotá no tiene horario de verano | Justo el último día el resultado cambia: con horas exactas el límite es la misma hora de la solicitud; con días de calendario vale todo el día | No entendí la explicación y pedí un ejemplo; con el ejemplo se vio la diferencia | Decidí contar 720 horas exactas y lo pregunté al evaluador con el ejemplo |
 
 ## Partes escritas sin IA
 Nota: en el punto 1 escribí estos archivos yo mismo, pero con pistas de la IA. La IA no los escribió, aunque sí me dio algunos fragmentos cuando dije que no sabía.
@@ -55,16 +86,33 @@ Nota: en el punto 1 escribí estos archivos yo mismo, pero con pistas de la IA. 
 - `src/reglas/festivos.ts` (4/11/2026): completo, sin ayuda.
 - `src/reglas/tipos.ts` y `src/reglas/r3.ts` (4/11/2026): los escribí yo después de que la IA me explicó los tipos de TypeScript con un ejemplo de otra cosa (citas médicas). La IA me hizo ver dos errores: solo revisaba los minutos del inicio (lo encontré recorriendo la prueba 2 a mano) y usaba `getMinutes()` en vez de `getUTCMinutes()`.
 - Escrito por la IA con los casos que acordamos: `tests/r3.test.ts`. Yo cambié el nombre de la función importada.
+- Correo al evaluador (4/11/2026): la IA hizo un borrador; yo lo reescribí con mis palabras, lo dejé en 6 preguntas y lo envié.
+- `src/reglas/r6.ts` (4/11/2026): completo, con pistas. La IA me hizo ver que había dejado un `const ahora = new Date()` que el parámetro tapaba (shadowing). Separé el `if` en dos para tener un mensaje por cada límite.
+- Cambio sin ayuda en R6 (4/11/2026): pasar el máximo de 30 a 15 días en la función y en las pruebas. Me falló una prueba porque sumé 6 días en vez de 15 (puse el 16/11 en vez del 25/11); la IA me explicó por qué la otra prueba pasaba por casualidad. Lo deshice con `git checkout`.
+- `src/reglas/r1.ts` (4/11/2026): completo, con pistas (`for...of`, `continue` y la condición de cruce que me explicó la IA).
+- `src/reglas/tipos.ts` (4/11/2026): agregué `EstadoReserva`, `ReservaExistente` y `TipoEspacio`. `TipoEspacio` lo hice sin ayuda.
+- `src/reglas/r4.ts` (4/11/2026): completo, sin ayuda más allá de la pista del template string.
+- `src/reglas/r8.ts` (4/11/2026): con pistas. Corregí cuatro errores que me señaló la IA (`TipoEspacio` en vez de `tipo`, `==`, `pendiente` sin comillas y `return null`) y el nombre de la función, que no coincidía con las pruebas.
+- Escritos por la IA con los casos que acordamos: `tests/r6.test.ts`, `tests/r1.test.ts`, `tests/r4.test.ts` y `tests/r8.test.ts`.
 
 ## Qué aprendí
 - `output: 'server'` y `adapter`: el primero hace que Astro atienda cada petición en el momento; el segundo define el runtime donde corre (Node, Vercel...). Aplicado en `astro.config.mjs`.
 - `npm run build` solo compila en `dist/`; `npm start` corre lo compilado; `npm run dev` levanta un servidor que se recarga al guardar.
 - `dependencies` frente a `devDependencies`: Vitest solo hace falta para desarrollar (`npm install -D`).
 - Exportaciones con nombre (`import { defineConfig }`) frente a la exportación por defecto (`import node`).
-- Docker Compose: PostgreSQL usa el puerto 5432; los datos persisten en un volumen; las variables `POSTGRES_*` solo se aplican con el volumen vacío y para cambiarlas hay que usar `docker compose down -v`.- `EXCLUDE` frente a un `SELECT` previo: dos peticiones simultáneas pueden ver el horario libre con el `SELECT`; `EXCLUDE` se comprueba en el `INSERT` y el segundo falla. El rango `[inicio, fin)` permite reservas contiguas.
+- Docker Compose: PostgreSQL usa el puerto 5432; los datos persisten en un volumen; las variables `POSTGRES_*` solo se aplican con el volumen vacío y para cambiarlas hay que usar `docker compose down -v`.
+- `EXCLUDE` frente a un `SELECT` previo: dos peticiones simultáneas pueden ver el horario libre con el `SELECT`; `EXCLUDE` se comprueba en el `INSERT` y el segundo falla. El rango `[inicio, fin)` permite reservas contiguas.
 - `CHECK` debe expresar la regla exacta: `asistentes >= 1` y `estado IN (...)`, no "mayor que 0" ni "no vacío".
 - Columna generada frente a columna normal: la generada la calcula PostgreSQL y no puede contradecir a `inicio`.
 - `psql -v ON_ERROR_STOP=1`: sin esta opción psql sigue después de un error y termina con código 0. `<` envía un archivo como entrada y `>` escribe la salida en un archivo.
 - TypeScript: anotaciones de tipo (`: number`), `type` para describir la forma de un objeto, `| null` para "esto o nada", `export` e `import type`. TypeScript también deduce los tipos solo (inferencia).
 - `getMinutes()` depende de la zona horaria del computador; `getUTCMinutes()` no. Como Bogotá está a −5 horas exactas, los minutos UTC coinciden con los de Bogotá.
 - Recorrer el código a mano con los datos de una prueba sirve para encontrar errores sin ejecutarlo.
+- La hora actual entra como parámetro (`ahora: Date`) para que las pruebas fijen el instante; `new Date()` solo va en los endpoints. Si una variable de afuera y un parámetro se llaman igual, se usa el parámetro (shadowing).
+- `getTime()` devuelve milisegundos desde el 1/1/1970 UTC; dividir entre `1000 * 60 * 60` da horas.
+- Las pruebas de límite van en pares: justo en el borde y 1 ms después. Una prueba que pasa no demuestra que esté bien escrita.
+- Sin `-05:00`, una fecha se interpreta en la zona del servidor: en un servidor UTC queda 5 horas antes.
+- Dos reservas `[inicio, fin)` se cruzan si cada una empieza antes de que la otra termine: `inicio < otra.fin && fin > otra.inicio`.
+- Tipos de unión (`'PENDIENTE' | 'CONFIRMADA' | ...`): solo aceptan esos valores. Los tipos desaparecen al ejecutar, así que no validan los datos que llegan de afuera.
+- Una regla debe decidir por el dato correcto: R8 por el tipo del espacio, no por su código.
+- `===` compara sin convertir tipos; `==` sí convierte. `toBe` compara valores simples y `toEqual` objetos completos. Los template strings (`` `El espacio ${codigo}` ``) arman textos con valores.
