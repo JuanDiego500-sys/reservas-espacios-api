@@ -3,6 +3,10 @@ import { festivos } from './festivos';
 
  
 
+/**
+ * R2: lunes a viernes de 7:00 a 21:00, sábados de 7:00 a 13:00; domingos y festivos no se presta.
+ * Toda la reserva debe quedar dentro del horario. Se evalúa en Bogotá con desfase fijo -05:00 (decisión 4).
+ */
 export function validarRegla2(inicio: Date, fin: Date): ErrorRegla | null {
     const bogota = new Date(inicio.getTime() - 5 * 60 * 60 * 1000); // convertir a hora de Bogotá
     const dia = bogota.getUTCDay();
@@ -13,6 +17,9 @@ export function validarRegla2(inicio: Date, fin: Date): ErrorRegla | null {
     if (festivos.includes(fecha)) {
         return { regla: 'R2', mensaje: 'No se pueden hacer reservas los días festivos' };
     }
+    // Se mueve el instante 5 horas y se leen los métodos getUTC...: así no importa la zona del servidor.
+    // Las horas se comparan como minutos del día: 7:00 = 420, 13:00 = 780, 21:00 = 1260.
+    // El fin se calcula como inicio + duración para que una reserva que termina a medianoche no cuente como 0.
     const minutosInicio = bogota.getUTCHours() * 60 + bogota.getUTCMinutes();
     const duracion = (fin.getTime() - inicio.getTime()) / (1000 * 60);
     const minutosFin = minutosInicio + duracion;

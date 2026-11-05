@@ -1,4 +1,8 @@
 import type { ErrorRegla } from './tipos';
+/**
+ * R3: inicio y fin en :00 o :30, duración mínima 1 hora y máxima 4 horas (los dos límites son válidos).
+ * getUTCMinutes sirve porque Bogotá está a -5 horas exactas: los minutos coinciden con los de UTC.
+ */
 // 1. revisar los minutos de inicio y fin: deben ser 0 o 30
 export function validarRegla3(inicio: Date, fin: Date): ErrorRegla | null {
     const minutosInicio = inicio.getUTCMinutes();

@@ -7,6 +7,12 @@ import { validarRegla5 } from './r5';
 import { validarRegla6 } from './r6';
 
 
+/**
+ * Revisa todas las reglas de creación para una fecha y devuelve el primer error, o null si cumple todas.
+ * La usan POST /reservas (una vez) y POST /reservas/recurrentes (una vez por semana).
+ * Orden de prioridad (decisión 17): R5, R3, R2, R6, R4 y R1. R7 (cancelar) y R8 (estado inicial) no validan la creación.
+ * Antes de llamarla, el servicio ya revisó encabezados, cuerpo y que el espacio exista y esté activo.
+ */
 export function validarReserva (solicitud: solicitudReserva, ahora: Date): ErrorRegla | null {
     let error = validarRegla5(solicitud.rol, solicitud.espacio.tipo, solicitud.reservasDelSolicitante, ahora);
     if (error) return error;
