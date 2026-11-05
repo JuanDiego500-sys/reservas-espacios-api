@@ -12,4 +12,16 @@ type ReservaExistente = {
     estado: EstadoReserva;
 }
 
-export type { ErrorRegla, EstadoReserva, ReservaExistente, TipoEspacio, TipoRol };
+type solicitudReserva = {
+    inicio: Date;
+    fin: Date;
+    espacio: { codigo: string, tipo: TipoEspacio, capacidad: number };
+    asistentes: number;
+    rol: TipoRol;
+    reservasDelEspacio: ReservaExistente[];
+    reservasDelSolicitante: ReservaExistente[];
+    omitirR6: boolean;
+}
+
+
+export type { ErrorRegla, EstadoReserva, ReservaExistente, TipoEspacio, TipoRol , solicitudReserva };

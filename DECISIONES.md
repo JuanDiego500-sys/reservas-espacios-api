@@ -79,4 +79,80 @@
   - **Alternativa:** que el límite fuera exclusivo.
   - **Por qué:** "hasta 2 horas antes" incluye el límite, igual que en R6, donde el evaluador confirmó que los límites exactos son válidos.
   - Una petición 1 ms después del límite se rechaza. Las dos situaciones tienen prueba.
-- **Quién se compara:** el correo de `X-Usuario` frente al `solicitante` guardado en la reserva. El servicio trae la reserva por su `id`, sin filtrar por solicitante, para que una reserva ajena responda 403 (R7) y no 404.
+- **Quién se compara:** el correo de `X-Usuario` frente al `solicitante` guardado en la reserva. El servicio trae la reserva por su `id`, sin filtrar por solicitante, para que una reserva ajena responda 422 (R7) y no 404.
+
+## 14. SQL plano con `pg` en lugar de un ORM
+- **Alternativas:** un ORM (Prisma, Drizzle), un constructor de consultas (Kysely) o SQL plano con el paquete `pg`.
+- **Decisión:** SQL plano con `pg`.
+  - Las reglas más delicadas viven en PostgreSQL (`EXCLUDE` con `tstzrange`, columna generada con `AT TIME ZONE`, `CHECK`). Con un ORM habría que escribirlas igual en SQL crudo o en migraciones aparte.
+  - Con SQL plano, lo que se lee en `schema.sql` y en las consultas es exactamente lo que corre en la base de datos. No hay una capa que traducir ni que explicar en la entrevista.
+  - Son dos tablas y unas diez consultas: un ORM agregaría dependencias, generación de código y configuración sin ahorrar trabajo.
+  - **Costo aceptado:** los resultados de las consultas no traen tipos automáticos. Se escriben a mano en TypeScript. Las consultas siempre usan parámetros (`$1`, `$2`), nunca texto concatenado, para evitar la inyección de SQL.
+
+## 15. Cómo se cuentan los 30 días de R6
+- **Contexto:** el evaluador confirmó que los dos límites exactos (24 horas y 30 días) son válidos y dejó a nuestra decisión cómo contar los 30 días.
+- **Alternativas:**
+  - 720 horas exactas (30 × 24) desde `ahora` hasta el inicio;
+  - 30 días de calendario en Bogotá, comparando solo las fechas sin importar la hora.
+- **Decisión:** 720 horas exactas. Usa la misma unidad que el mínimo de 24 horas, así que las dos mitades de la regla se calculan igual (diferencia de `getTime()` en horas). Como Bogotá no tiene horario de verano, 30 días siempre son 720 horas. Una reserva que empieza exactamente 720 horas después es válida, y 1 ms más tarde se rechaza. Las dos situaciones tienen prueba.
+
+## 16. R8 decide por tipo de espacio y no por código
+- **Alternativas:** comparar el código (`AUD-001`) o el tipo (`AUDITORIO`).
+- **Decisión:** por tipo. Si se crea otro auditorio con `POST /espacios`, también queda PENDIENTE sin cambiar el código. Lo mismo aplica a R5: el estudiante no puede reservar ningún espacio de tipo AUDITORIO.
+
+## 17. Prioridad cuando se incumplen varias reglas
+- **Contexto:** una petición puede incumplir varias reglas a la vez; el formato de error tiene una sola `"regla"`.
+- **Alternativas:** devolver todos los errores o devolver solo el primero en un orden fijo.
+- **Decisión:** el primero en este orden. Antes de las reglas van los encabezados (401), el cuerpo (400), la existencia del espacio (404) y que esté activo (409). Después, la función `validarReserva` revisa:
+  1. **R5:** auditorio y máximo de reservas activas. Depende de quién pide y no se arregla cambiando las horas de la petición.
+  2. **R3:** bloques y duración. Si las horas están mal formadas, no tiene sentido revisar el horario.
+  3. **R2:** horario, domingos y festivos.
+  4. **R6:** anticipación. Se omite en las fechas 2 en adelante de una serie.
+  5. **R4:** capacidad.
+  6. **R1:** traslape. Va al final porque depende de las demás reservas del espacio, que cambian todo el tiempo, y PostgreSQL la vuelve a revisar con `EXCLUDE`.
+- Un solo error por respuesta mantiene el formato del enunciado y hace que cada prueba verifique exactamente una regla.
+
+## 18. Códigos HTTP y valor de `"regla"` en todos los errores
+- **Contexto:** el enunciado fija el formato `{"regla", "mensaje"}` para las reglas, pero no dice qué hacer con los demás errores.
+- **Alternativas:** un formato distinto para los errores que no son de regla (por ejemplo `{"error": ...}`), o el mismo formato con un valor descriptivo en `"regla"`.
+- **Decisión:** el mismo formato siempre, para que el cliente lea los errores de una sola forma.
+
+| Situación | HTTP | `"regla"` |
+| --- | --- | --- |
+| Encabezados `X-Usuario` o `X-Rol` ausentes, correo sin `@` o rol inválido | 401 | `IDENTIFICACION` |
+| Cuerpo inválido: campos faltantes, fecha que no es `AAAA-MM-DD` real, hora que no es `HH:MM`, asistentes no enteros, motivo vacío, tipo de espacio inválido | 400 | `VALIDACION` |
+| La acción es solo para ADMINISTRATIVO (crear espacio, aprobar, rechazar) | 403 | `PERMISO` |
+| ESTUDIANTE que intenta crear una serie | 403 | `SERIE` |
+| Espacio o reserva que no existe | 404 | `NO_ENCONTRADO` |
+| Espacio inactivo, código duplicado, estado que no permite la acción | 409 | `CONFLICTO` |
+| R1 (traslape) | 409 | `R1` |
+| R2, R3, R4, R5, R6 y R7 | 422 | la regla |
+| Alguna fecha de una serie incumple una regla | 422 | `SERIE`, con la lista `fechas` |
+
+- **Por qué 409 en R1 y 422 en el resto:** R1 choca con el estado actual de otro recurso, la otra reserva. Las demás indican que la petición está bien formada pero no cumple una regla del negocio.
+- **Por qué validar el cuerpo antes de las reglas:** por ejemplo, 2.5 asistentes pasaría R4 (está entre 1 y la capacidad); se rechaza antes con `VALIDACION`.
+
+## 19. Espacio inactivo
+- **Alternativas:** 404 (como si no existiera), 422 como una regla más o 409.
+- **Decisión:** 409 `CONFLICTO`. El espacio existe (aparece en `GET /espacios`), pero su estado impide reservarlo, así que 404 confundiría al cliente. Se revisa en el servicio antes de `validarReserva`, porque el dato viene de la base de datos y no es una regla del enunciado.
+
+## 20. Aprobar, rechazar y estados
+- Aprobar o rechazar una reserva que no está PENDIENTE → 409 `CONFLICTO`.
+- Aprobar una reserva cuyo inicio ya pasó → 409 `CONFLICTO`: confirmar algo que ya ocurrió no tiene sentido. Rechazarla sí se permite, para que no quede PENDIENTE para siempre.
+- **Alternativa descartada:** permitir aprobar siempre. Dejaría reservas "confirmadas" en el pasado sin que nadie las usara.
+
+## 21. Quién puede consultar `GET /reservas`
+- **Alternativas:** todos los roles ven todas las reservas, o el ESTUDIANTE y el DOCENTE ven solo las suyas.
+- **Decisión:** todos ven todas. El enunciado ofrece el filtro por solicitante y no pide privacidad. Ver las reservas de otros ayuda a encontrar un horario libre. En un sistema real se restringiría, porque los correos son datos personales.
+
+## 22. Disponibilidad
+- **Decisión:** los bloques de 30 minutos libres se calculan solo con el horario (R2) y las reservas activas (R1). No se aplica R6: la disponibilidad describe el calendario del espacio, no si quien consulta puede reservar ya. Si se aplicara R6, la respuesta cambiaría según la hora de la consulta.
+- **Domingo o festivo:** lista vacía (200).
+- **Espacio inactivo:** 409, igual que al reservar.
+- **Fecha pasada:** se calcula igual.
+- **Alternativa descartada:** devolver error en domingos y festivos. Una lista vacía responde la pregunta "¿qué hay libre?" sin tratarla como un error.
+
+## 23. Crear espacios
+- Código duplicado → 409 `CONFLICTO` (la llave primaria de PostgreSQL lo garantiza aunque lleguen dos peticiones a la vez).
+- Tipo distinto de LAB, SALA o AUDITORIO → 400 `VALIDACION`. El `CHECK` de `schema.sql` es la segunda barrera.
+- Capacidad: entero mayor que 0. `activo` es opcional y vale `true` por defecto.

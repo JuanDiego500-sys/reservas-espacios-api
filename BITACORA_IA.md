@@ -64,6 +64,50 @@
 - **Qué cambié o decidí yo:**
   > Usé el tipo y creé yo mismo `TipoEspacio` en `tipos.ts`. Escribí `r8.ts` con pistas; la primera versión comparaba `TipoEspacio` (el tipo, no el valor) con `==` y devolvía `null`.
 
+### Prompt 6: [Ajuste del jueves, incorporarlo al plan]
+- **Fecha y commit:**
+  > 5/11/2026, mañana, antes del commit `8904192`
+- **Contexto:** a las 8:00 llegó el correo con las reservas recurrentes. Le pasé el correo a la IA.
+- **Texto literal:**
+  > vamos a continuar donde lo dejamos , sin embargo hemos recibido un cambio en los requisitos del sistema, los cuales te presentaré a continuación [correo del ajuste] la idea es incluirlos en el claude.md y en el plan del sistema , el cual nos guiará para completar la ultima fase del proyecto.
+- **Qué obtuve:** antes de tocar archivos, la IA me mostró qué cambiaría y me pidió confirmación. Señaló seis situaciones que el ajuste no define:
+  - festivos dentro de la serie;
+  - formato de la lista de errores;
+  - rutas para cancelar;
+  - R7 al cancelar una serie;
+  - el auditorio en una serie;
+  - el ESTUDIANTE que intenta crear una serie.
+
+  También me hizo ver dos cosas:
+  - el mínimo de 24 horas no necesita revisarse en las fechas 2 en adelante, porque son posteriores a la primera;
+  - casi cualquier serie larga cruza un festivo (16/11, 8/12, 25/12, 1/1 y 11/1).
+- **Qué cambié o decidí yo:**
+  > Le pedí que escribiera los cambios con explicaciones descriptivas y un plan para terminar todo el mismo día en tres bloques de trabajo. Le pasé las respuestas del evaluador. Quedaron en `docs/Ajuste_jueves.md` y en `CLAUDE.md`: fuente de verdad, criterios nuevos (`validarReserva` única, todo o nada en una transacción, `serie_id`) y el punto 9 con casillas concretas.
+
+### Prompt 7: [¿Lo logramos hoy? Cambiar el reparto del trabajo]
+- **Fecha y commit:**
+  > 5/11/2026, cerca de las 11:50, después del commit `617514d`
+- **Contexto:** terminamos R5 y R7. Todas las reglas estaban probadas (57 pruebas), pero no había ningún endpoint.
+- **Texto literal:**
+  > osea, ya terminamos todo lo de las pruebas y empezamos con que del plan? lo logramos hoy?
+- **Qué obtuve:** una respuesta honesta.
+  - Con el ritmo de R5 y R7 (unas 2 horas entre las dos) no alcanzaba para unos 10 endpoints, el servicio con transacciones, la disponibilidad y las series.
+  - La IA propuso repartir el trabajo según lo que pesa en la entrevista:
+    - **Yo escribo** lo lógico que me pueden preguntar: `validarReserva`, `serie.ts` y el servicio que crea la reserva en una transacción.
+    - **La IA escribe** lo repetitivo, explicando cada línea: los encabezados, los errores, los endpoints que repiten el patrón, el README y los curl.
+- **Qué cambié o decidí yo:**
+  > Acepté el reparto con una condición: lo lógico lo debo saber completamente y solo lo repetitivo o de plantilla lo hace la IA. Texto literal: "vamos con ese reparto me parece bien , procurando que lo logico que se puede preguntar lo sepa completamente pero lo que no es logico si no repetitivo o una plantilla lo hagas tu. tenemos que lograrlo hoy incluso teniendo en cuenta las mejoras del profesor o cambios"
+
+### Prompt 8: [Punto 8 en una sola decisión y diseño de `validarReserva`]
+- **Fecha y commit:**
+  > 5/11/2026, mediodía
+- **Contexto:** para no detenernos en cada situación no definida, la IA me presentó una tabla con 11 propuestas (de la A a la K): códigos HTTP, valor de `"regla"` en los errores que no son de regla, encabezados, cuerpo, espacio inactivo, aprobar, `GET /reservas`, disponibilidad, `POST /espacios` y series. También la firma de `validarReserva` y 6 pruebas de prioridad.
+- **Texto literal:**
+  > me parece bien el orden. igual algunas no cambian mucho. pienso que es mejor agruparlos en un objeto , además el espacio inactivo se revisa antes de validar reserva , responde con un 404 supongo.
+- **Qué obtuve:** la IA me corrigió el 404. LAB-103 sí existe (aparece en `GET /espacios`), así que "no encontrado" confundiría al cliente. Lo correcto es 409: el recurso existe, pero su estado impide la operación. Es como un nodo de Kubernetes con `cordon`.
+- **Qué cambié o decidí yo:**
+  > Elegí agrupar los parámetros de `validarReserva` en un objeto y revisar el espacio inactivo en el servicio, antes de las reglas. Acepté la tabla completa ("Si a la tabla con las decisiones, me parece correcto, si a la firma de validarReserva y si a las 6 pruebas"). Quedaron como las decisiones 14 a 23 de `DECISIONES.md`.
+
 ## Respuestas incorrectas de la IA
 | Qué propuso | Por qué estaba mal | Cómo lo noté | Cómo lo corregí |
 | --- | --- | --- | --- |
@@ -71,6 +115,9 @@
 | 4/11/2026: agregó una fila a `EJECUCIONES.md` sin volver a leer el archivo | Yo ya había agregado esa fila en mi commit. Quedó duplicada y pegada a la anterior porque el archivo no terminaba en salto de línea, y la tabla se rompió | La IA lo vio al revisar el resultado de su propio cambio | Dejó una sola fila con la hora y el hash correctos |
 | 4/11/2026: para revisar mis tipos corrió `npx tsc --noEmit` sin preguntarme | CLAUDE.md prohíbe que la IA ejecute comandos. Además, TypeScript no está instalado como paquete aparte, y `npx` intentó descargar el paquete `tsc` de npm, que es otro paquete viejo y sin soporte, no el compilador | La IA lo informó al ver la advertencia en la salida | No se instaló nada en el proyecto (`package.json` sin cambios). Desde entonces la IA solo lee los archivos y me da los comandos |
 | 4/11/2026: dijo que contar 30 días como 30 × 24 horas "da lo mismo que 30 días de calendario" porque Bogotá no tiene horario de verano | Justo el último día el resultado cambia: con horas exactas el límite es la misma hora de la solicitud; con días de calendario vale todo el día | No entendí la explicación y pedí un ejemplo; con el ejemplo se vio la diferencia | Decidí contar 720 horas exactas y lo pregunté al evaluador con el ejemplo |
+| 5/11/2026: escribió los 8 casos de `tests/r5.test.ts` y solo probó "la reserva ya terminó" con CONFIRMADA | Mi `filter` tenía un error de precedencia (`PENDIENTE \|\| CONFIRMADA && fin > ahora`) que cuenta como activas las PENDIENTE pasadas. Las 8 pruebas pasaban igual | La IA lo vio al leer mi código después de que las 47 pruebas salieran en verde | Agregó la prueba 9 (2 PENDIENTE ya terminadas). La grabé fallando a las 10:58, puse los paréntesis y la grabé pasando |
+| 5/11/2026: propuso un orden de prioridad con el auditorio de R5 en el primer lugar y el máximo de activas de R5 en el sexto | Mi `validarRegla5` revisa las dos partes en una sola llamada, con la firma que la misma IA había propuesto. Ese orden no se podía cumplir sin partir la función | La IA lo notó al escribir la decisión 17 | Las dos partes de R5 van primero, con el mismo argumento: dependen de quién pide y no de las horas |
+| 5/11/2026: en la decisión 13 escribió que una reserva ajena responde "403 (R7)" | Contradecía la tabla de códigos aprobada después, donde R7 responde 422 | La IA lo vio al escribir la tabla de la decisión 18 | Cambió la decisión 13 a 422 y me lo informó |
 
 ## Partes escritas sin IA
 Nota: en el punto 1 escribí estos archivos yo mismo, pero con pistas de la IA. La IA no los escribió, aunque sí me dio algunos fragmentos cuando dije que no sabía.
@@ -95,6 +142,19 @@ Nota: en el punto 1 escribí estos archivos yo mismo, pero con pistas de la IA. 
 - `src/reglas/r8.ts` (4/11/2026): con pistas. Corregí cuatro errores que me señaló la IA (`TipoEspacio` en vez de `tipo`, `==`, `pendiente` sin comillas y `return null`) y el nombre de la función, que no coincidía con las pruebas.
 - Escritos por la IA con los casos que acordamos: `tests/r6.test.ts`, `tests/r1.test.ts`, `tests/r4.test.ts` y `tests/r8.test.ts`.
 - `src/reglas/r2.ts` (4/11/2026): lo escribí yo con pistas fuertes. La IA me explicó cómo pasar a hora de Bogotá (restar 5 horas al instante), los minutos del día y el caso de la medianoche (fin = inicio + duración), y me dio líneas con espacios en blanco para los minutos. Errores que corregí: usé `Date.now()` en vez de `inicio` (lo noté yo), agregué un parámetro `festivos` que tapaba el import, puse mal los paréntesis de la duración, reasigné `inicio` y me faltaba el `if` de las 21:00. Los 11 casos de `tests/r2.test.ts` los propusimos entre los dos (4 son míos) y la IA escribió las pruebas.
+- `src/reglas/r5.ts` y `TipoRol` en `tipos.ts` (5/11/2026): con pistas. Elegí yo `.filter(...).length`. Errores que corregí:
+  - recibía `ReservaExistente` en vez de `ReservaExistente[]`. Vitest no lo detecta, porque no revisa tipos;
+  - faltaba el parámetro `ahora`;
+  - me faltaban los paréntesis del `||`.
+- `src/reglas/r7.ts` (5/11/2026): con pistas. Primero el ADMINISTRATIVO, después el dueño y después el plazo. Errores que corregí:
+  - comparaba los milisegundos contra `2` (2 ms), lo grabé fallando a las 11:42;
+  - faltaba el `return null` final;
+  - los mensajes de permiso y de plazo estaban cruzados.
+- Decisiones mías en R7 (5/11/2026):
+  - primero el permiso y después el plazo;
+  - exactamente 2 horas antes es válido;
+  - el ADMINISTRATIVO cancela sin plazo. Al principio dije que el plazo también le aplicaba y después cambié de opinión.
+- Escritos por la IA con los casos que acordamos: `tests/r5.test.ts`, `tests/r7.test.ts` y `tests/validar.test.ts`.
 
 ## Qué aprendí
 - `output: 'server'` y `adapter`: el primero hace que Astro atienda cada petición en el momento; el segundo define el runtime donde corre (Node, Vercel...). Aplicado en `astro.config.mjs`.
@@ -118,3 +178,11 @@ Nota: en el punto 1 escribí estos archivos yo mismo, pero con pistas de la IA. 
 - Una regla debe decidir por el dato correcto: R8 por el tipo del espacio, no por su código.
 - Para obtener la hora de Bogotá se mueve el instante completo (`new Date(inicio.getTime() - 5 h)`) y luego se usan los métodos `getUTC...`; restar 5 a la hora no cambia el día. Comparar horas como minutos del día (`hora * 60 + minutos`) simplifica las condiciones, y calcular el fin como inicio + duración evita que la medianoche cuente como 0.
 - `===` compara sin convertir tipos; `==` sí convierte. `toBe` compara valores simples y `toEqual` objetos completos. Los template strings (`` `El espacio ${codigo}` ``) arman textos con valores.
+- `.filter(...)` devuelve un arreglo con los elementos que cumplen y `.length` los cuenta. `.some(...)` solo dice si hay al menos uno (sirve para R1, no para contar en R5). Los dos recorren la lista completa sin saber cuántos elementos tiene, igual que un `for...of`.
+- `&&` se evalúa antes que `||`. `A || B && C` es `A || (B && C)`, así que hay que poner paréntesis: `(A || B) && C`. Una prueba que pasa no demuestra que la condición esté bien: hay que probar cada combinación que importa.
+- `npx tsc --noEmit` revisa los tipos sin generar archivos, como `terraform validate`. Vitest ejecuta el código pero no revisa los tipos, así que hacen falta los dos.
+- Un `Date` es un instante: milisegundos desde 1970 en UTC, sin zona horaria. La zona solo aparece al leer la hora del día o al convertirlo en texto. `ahora` entra como parámetro para que las pruebas fijen el instante, no por la zona horaria.
+- En los límites: `<` deja pasar el valor exacto y `<=` lo bloquea. Las pruebas en pares (exacto y 1 ms después) atrapan los errores de unidades, como comparar milisegundos contra horas.
+- Una función de regla recibe lo que la consulta ya filtró: R1 las reservas del espacio y R5 las del solicitante. En R7 la reserva se trae por `id` sin filtrar por solicitante, para que una ajena responda R7 y no 404, y para que el ADMINISTRATIVO la encuentre.
+- 404 es "no existe" y 409 es "existe, pero su estado impide la operación" (un espacio inactivo).
+- El *spread* `{ ...base, campo: valor }` copia un objeto y reemplaza algunos campos, como un merge de valores en Helm.
