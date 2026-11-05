@@ -52,3 +52,31 @@
   - contar solo por estado (PENDIENTE o CONFIRMADA);
   - contar por estado y además que la reserva no haya terminado (`fin > ahora`).
 - **Decisión:** estado PENDIENTE o CONFIRMADA y `fin > ahora`. Una reserva que ya pasó sigue en CONFIRMADA en la base de datos, porque nadie le cambia el estado; si se contara solo por estado, un estudiante con dos reservas pasadas quedaría bloqueado para siempre. Una reserva que termina exactamente en `ahora` ya no cuenta. El límite es por estudiante en todos los espacios: el servicio consulta las reservas del solicitante y la regla recibe esa lista. Si ya tiene 2 activas, la tercera se rechaza.
+
+## 11. Cancelar una reserva que ya está CANCELADA o RECHAZADA
+- **Contexto:** R7 dice quién puede cancelar y hasta cuándo, pero no qué pasa si la reserva ya no está activa.
+- **Alternativas:**
+  - incluirlo en R7 y responder con `"regla": "R7"`;
+  - responder éxito sin cambiar nada (operación idempotente);
+  - validarlo en el servicio, antes de R7, como un conflicto de estado.
+- **Decisión:** validarlo en el servicio y responder 409. No es una regla de negocio del enunciado sino el estado actual de la reserva: cancelar algo que ya no está activo es un conflicto. Responder éxito ocultaría un posible error del cliente. R7 queda como función pura que solo revisa el permiso y el plazo.
+
+## 12. El ADMINISTRATIVO puede cancelar sin el plazo de 2 horas
+- **Contexto:** R7 dice "Solo la cancela quien la solicitó o un ADMINISTRATIVO, y hasta 2 horas antes del inicio". La frase admite dos lecturas: el plazo aplica a todos, o solo a quien la solicitó.
+- **Alternativas:**
+  - el plazo aplica a todos, incluido el ADMINISTRATIVO (lectura literal de la frase);
+  - el ADMINISTRATIVO puede cancelar en cualquier momento.
+- **Decisión:** el ADMINISTRATIVO cancela en cualquier momento; el plazo de 2 horas aplica solo al solicitante. El ADMINISTRATIVO es quien gestiona los espacios y necesita poder liberar un espacio ante una emergencia (un daño, un corte de energía, un evento institucional) aunque falten menos de 2 horas o la reserva ya haya empezado. El plazo protege a la Unidad de TI de cancelaciones de último minuto de los usuarios, no limita a la propia Unidad.
+- **Consecuencia aceptada:** el ADMINISTRATIVO también puede cancelar una reserva que ya terminó. No se restringe porque agregaría una condición más sin que ninguna regla lo pida.
+- **Pruebas:** "un ADMINISTRATIVO cancela a 1 hora del inicio" y "un ADMINISTRATIVO cancela una reserva que ya empezó" son válidas.
+
+## 13. Orden y límite exacto en R7
+- **Orden:** primero el permiso y después el plazo.
+  - **Alternativa:** primero el plazo.
+  - **Por qué:** a quien no tiene permiso no le sirve saber que "ya es tarde", porque igual no podría cancelar. Y decirle que faltan menos de 2 horas le daría información sobre la reserva de otra persona.
+  - Si es ADMINISTRATIVO, la función termina ahí (decisión 12).
+- **Límite exacto:** que el solicitante cancele exactamente 2 horas antes del inicio es válido.
+  - **Alternativa:** que el límite fuera exclusivo.
+  - **Por qué:** "hasta 2 horas antes" incluye el límite, igual que en R6, donde el evaluador confirmó que los límites exactos son válidos.
+  - Una petición 1 ms después del límite se rechaza. Las dos situaciones tienen prueba.
+- **Quién se compara:** el correo de `X-Usuario` frente al `solicitante` guardado en la reserva. El servicio trae la reserva por su `id`, sin filtrar por solicitante, para que una reserva ajena responda 403 (R7) y no 404.
