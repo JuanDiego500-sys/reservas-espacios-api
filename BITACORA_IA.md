@@ -108,6 +108,23 @@
 - **Qué cambié o decidí yo:**
   > Elegí agrupar los parámetros de `validarReserva` en un objeto y revisar el espacio inactivo en el servicio, antes de las reglas. Acepté la tabla completa ("Si a la tabla con las decisiones, me parece correcto, si a la firma de validarReserva y si a las 6 pruebas"). Quedaron como las decisiones 14 a 23 de `DECISIONES.md`.
 
+### Prompt 9: [Cancelar la serie, paso a paso]
+- **Fecha y commit:**
+  > 5/11/2026, entre las 17:00 y las 18:00, antes del commit `35cb839`
+- **Contexto:** la IA me dio las pistas de `cancelablesDeSerie` en 5 pasos, todos en un solo mensaje. Me perdí.
+- **Texto literal:**
+  > estoy algo perdido , vamos al paso a paso como generar la funcion, enfoquemonos solo en eso por ahora
+- **Qué obtuve:** la IA cambió de método. Me daba un solo paso por mensaje y esperaba a que lo escribiera antes de seguir:
+  1. la firma, con espacios en blanco y un `return` temporal;
+  2. el permiso, con una tabla que traduce cada parte de la frase a código;
+  3. el `filter`, reutilizando R7;
+  4. el `map` para pasar de reservas a ids, comparado con `filter`;
+  5. el caso vacío.
+
+  En cada paso me pedía recorrer a mano una prueba concreta, por ejemplo docente2 en la prueba 5.
+- **Qué cambié o decidí yo:**
+  > Escribí cada paso y lo comprobé recorriendo las pruebas a mano. Al final encontré yo solo un error de lógica: dejé el `return` temporal con `ids: []`, así que la función siempre devolvía la lista vacía aunque hubiera fechas para cancelar. Lo cambié por `{ error: null, ids }` y pasaron las 81 pruebas. Aprendí que dividir una función en pasos pequeños, cada uno comprobado, me funciona mejor que recibir todas las pistas juntas.
+
 ## Respuestas incorrectas de la IA
 | Qué propuso | Por qué estaba mal | Cómo lo noté | Cómo lo corregí |
 | --- | --- | --- | --- |
@@ -164,6 +181,12 @@ Nota: en el punto 1 escribí estos archivos yo mismo, pero con pistas de la IA. 
   - llamaba a `validarReserva` con `new Date()` en vez de `ahora`.
 
   Elegí escribir la copia campo por campo en vez de usar spread: si el tipo cambia, TypeScript avisa. Escritos por la IA con los casos que acordamos: `tests/serie.test.ts`.
+- `cancelablesDeSerie` en `src/reglas/serie.ts` (5/11/2026, commit `35cb839`): la escribí paso a paso con pistas. La IA no me dio el código de ningún paso. Errores que corregí:
+  - el tipo de retorno `ids: []` (una lista que siempre está vacía) en vez de `number[]`;
+  - un `import { nullish } from 'astro:schema'` que agregó solo el autocompletado del editor y que habría roto todas las pruebas de `serie.ts`;
+  - **sin ayuda:** el `return` final devolvía `ids: []` y no la lista calculada.
+
+  Las 6 pruebas de `tests/cancelar-serie.test.ts` las escribió la IA con los casos que acordamos, y también el JSDoc de la función.
 - Comentarios del código en `src/reglas/` (5/11/2026): los escribió la IA a mi pedido (commit `1207ab1` y el de `serie.ts`). Son JSDoc por función con la referencia a cada decisión y comentarios en las líneas donde el porqué no es obvio. No cambian el código.
 
 ## Qué aprendí
@@ -196,3 +219,9 @@ Nota: en el punto 1 escribí estos archivos yo mismo, pero con pistas de la IA. 
 - Una función de regla recibe lo que la consulta ya filtró: R1 las reservas del espacio y R5 las del solicitante. En R7 la reserva se trae por `id` sin filtrar por solicitante, para que una ajena responda R7 y no 404, y para que el ADMINISTRATIVO la encuentre.
 - 404 es "no existe" y 409 es "existe, pero su estado impide la operación" (un espacio inactivo).
 - El *spread* `{ ...base, campo: valor }` copia un objeto y reemplaza algunos campos, como un merge de valores en Helm.
+- `.filter` se queda con algunos elementos sin cambiarlos; `.map` se queda con todos, pero transformados (`reservas.map(r => r.id)` da solo los ids). Se pueden encadenar.
+- En un tipo, `[]` solo significa "lista siempre vacía"; una lista de números es `number[]`. `{ ids }` es atajo de `{ ids: ids }`.
+- `&&` hace corto circuito: si la primera parte es `false`, no evalúa la segunda. Por eso el ADMINISTRATIVO pasa el permiso sin que se compare su correo.
+- El autocompletado del editor puede agregar imports en silencio (`astro:schema`). Hay que revisar las primeras líneas del archivo. En la entrevista estará desactivado.
+- Un `return` temporal para que la función compile ayuda a avanzar por pasos, pero hay que acordarse de reemplazarlo al final.
+- Una serie de 8 semanas tiene fechas a más de 30 días: sin omitir R6 desde la segunda fecha, el ajuste no funcionaría.
