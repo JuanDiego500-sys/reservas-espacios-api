@@ -45,3 +45,10 @@
 - **Contexto:** ninguna regla lee el rol guardado: R5, R7 y R8 usan el rol de quien hace la petición (encabezado `X-Rol`), y R5 cuenta las reservas activas por correo.
 - **Alternativas:** guardarlo o no guardarlo.
 - **Decisión:** guardarlo como historial, para saber con qué rol se pidió cada reserva y poder analizarlo más adelante. Solo cuesta una columna con un `CHECK`.
+
+## 10. Qué cuenta como reserva activa en R5
+- **Contexto:** R5 limita a los estudiantes a "máximo 2 reservas activas a la vez", pero el enunciado no define "activa".
+- **Alternativas:**
+  - contar solo por estado (PENDIENTE o CONFIRMADA);
+  - contar por estado y además que la reserva no haya terminado (`fin > ahora`).
+- **Decisión:** estado PENDIENTE o CONFIRMADA y `fin > ahora`. Una reserva que ya pasó sigue en CONFIRMADA en la base de datos, porque nadie le cambia el estado; si se contara solo por estado, un estudiante con dos reservas pasadas quedaría bloqueado para siempre. Una reserva que termina exactamente en `ahora` ya no cuenta. El límite es por estudiante en todos los espacios: el servicio consulta las reservas del solicitante y la regla recibe esa lista. Si ya tiene 2 activas, la tercera se rechaza.
