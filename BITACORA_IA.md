@@ -94,6 +94,7 @@ Nota: en el punto 1 escribí estos archivos yo mismo, pero con pistas de la IA. 
 - `src/reglas/r4.ts` (4/11/2026): completo, sin ayuda más allá de la pista del template string.
 - `src/reglas/r8.ts` (4/11/2026): con pistas. Corregí cuatro errores que me señaló la IA (`TipoEspacio` en vez de `tipo`, `==`, `pendiente` sin comillas y `return null`) y el nombre de la función, que no coincidía con las pruebas.
 - Escritos por la IA con los casos que acordamos: `tests/r6.test.ts`, `tests/r1.test.ts`, `tests/r4.test.ts` y `tests/r8.test.ts`.
+- `src/reglas/r2.ts` (4/11/2026): lo escribí yo con pistas fuertes. La IA me explicó cómo pasar a hora de Bogotá (restar 5 horas al instante), los minutos del día y el caso de la medianoche (fin = inicio + duración), y me dio líneas con espacios en blanco para los minutos. Errores que corregí: usé `Date.now()` en vez de `inicio` (lo noté yo), agregué un parámetro `festivos` que tapaba el import, puse mal los paréntesis de la duración, reasigné `inicio` y me faltaba el `if` de las 21:00. Los 11 casos de `tests/r2.test.ts` los propusimos entre los dos (4 son míos) y la IA escribió las pruebas.
 
 ## Qué aprendí
 - `output: 'server'` y `adapter`: el primero hace que Astro atienda cada petición en el momento; el segundo define el runtime donde corre (Node, Vercel...). Aplicado en `astro.config.mjs`.
@@ -115,4 +116,5 @@ Nota: en el punto 1 escribí estos archivos yo mismo, pero con pistas de la IA. 
 - Dos reservas `[inicio, fin)` se cruzan si cada una empieza antes de que la otra termine: `inicio < otra.fin && fin > otra.inicio`.
 - Tipos de unión (`'PENDIENTE' | 'CONFIRMADA' | ...`): solo aceptan esos valores. Los tipos desaparecen al ejecutar, así que no validan los datos que llegan de afuera.
 - Una regla debe decidir por el dato correcto: R8 por el tipo del espacio, no por su código.
+- Para obtener la hora de Bogotá se mueve el instante completo (`new Date(inicio.getTime() - 5 h)`) y luego se usan los métodos `getUTC...`; restar 5 a la hora no cambia el día. Comparar horas como minutos del día (`hora * 60 + minutos`) simplifica las condiciones, y calcular el fin como inicio + duración evita que la medianoche cuente como 0.
 - `===` compara sin convertir tipos; `==` sí convierte. `toBe` compara valores simples y `toEqual` objetos completos. Los template strings (`` `El espacio ${codigo}` ``) arman textos con valores.
