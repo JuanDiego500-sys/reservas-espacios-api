@@ -3,6 +3,7 @@ type  ErrorRegla = {
     mensaje: string;
 }
 type EstadoReserva = 'PENDIENTE' | 'CONFIRMADA' | 'RECHAZADA' | 'CANCELADA';
+type TipoEspacio = 'LAB' | 'SALA' | 'AUDITORIO';
 
 type ReservaExistente = {
     inicio: Date;
@@ -10,4 +11,4 @@ type ReservaExistente = {
     estado: EstadoReserva;
 }
 
-export type { ErrorRegla, EstadoReserva, ReservaExistente };
+export type { ErrorRegla, EstadoReserva, ReservaExistente, TipoEspacio };
