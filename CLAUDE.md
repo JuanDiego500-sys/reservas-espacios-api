@@ -4,8 +4,9 @@
 Producto mínimo viable, completo y de buen nivel para el Reto A. Debe ser simple, rápido de construir y fácil de explicar.
 Mi meta es aprender: debo poder explicar y modificar todo el código sin IA en una entrevista de 45 minutos.
 
-Fuente de verdad: @docs/Reto_A.md
-Si este archivo y el enunciado se contradicen, manda el enunciado: avísame de la contradicción.
+Fuente de verdad: @docs/Reto_A.md y @docs/Ajuste_jueves.md
+El ajuste del jueves (reservas recurrentes y respuestas del evaluador) manda sobre el enunciado donde lo modifique.
+Si este archivo y esas dos fuentes se contradicen, mandan ellas: avísame de la contradicción.
 
 ## Mi nivel
 Tengo experiencia en infraestructura: Azure, Terraform, Kubernetes y CI/CD.
@@ -36,6 +37,9 @@ docs/            Enunciado y ejemplos curl
 - Los errores de regla responden `{"regla": "R4", "mensaje": "..."}` con un código HTTP adecuado.
 - Las reservas PENDIENTE y CONFIRMADA bloquean el horario. Las RECHAZADA y CANCELADA no.
 - Sin capas, clases ni patrones que el proyecto no necesite. Prefiere una función clara a una abstracción.
+- Una sola validación para todas las reservas: la función pura `validarReserva` (en `src/reglas/`) revisa las reglas de una fecha y devuelve el primer error según la prioridad decidida. `POST /reservas` la llama una vez y `POST /reservas/recurrentes` la llama una vez por cada semana. Si una regla cambia, se cambia en un solo lugar.
+- Una serie recurrente se crea "todo o nada" en una sola transacción: primero se validan todas las fechas. Si alguna falla, no se inserta ninguna y se responde la lista de fechas con su problema. Si todas pasan, se insertan juntas y se hace `COMMIT`. Ante cualquier error, `ROLLBACK`.
+- Las reservas de una serie comparten el mismo valor en la columna `serie_id`, como una etiqueta que las agrupa. Una reserva simple tiene `serie_id` nulo.
 
 ## Cómo trabajamos
 1. Antes de programar, pregúntame cómo lo resolvería yo y espera mi respuesta.
@@ -118,7 +122,7 @@ Una casilla se marca solo si funciona, la ejecución quedó grabada y yo puedo e
 ### 8. Situaciones no definidas
 - [ ] Reserva de un espacio inactivo
 - [ ] Qué cuenta como reserva activa en R5
-- [ ] Si exactamente 24 horas y 30 días son válidos en R6
+- [ ] Si exactamente 24 horas y 30 días son válidos en R6. Respuesta del evaluador: los dos límites son válidos. Falta documentar cómo se cuentan los 30 días (propuesta: 720 horas exactas, como ya hace `r6.ts`)
 - [ ] Si el límite de 2 horas de R7 aplica también a ADMINISTRATIVO
 - [ ] Aprobación de una reserva cuya fecha ya pasó
 - [ ] Prioridad de errores cuando se incumplen varias reglas
@@ -129,12 +133,27 @@ Una casilla se marca solo si funciona, la ejecución quedó grabada y yo puedo e
 - [ ] Disponibilidad de un espacio inactivo, en domingo o festivo, en fecha pasada, y si tiene en cuenta R6
 - [ ] Quién puede consultar `GET /reservas`: todos los roles o el estudiante solo las suyas
 - [ ] `POST /espacios` con código duplicado y valores válidos de tipo (LAB, SALA, AUDITORIO)
-- [ ] Preguntas enviadas por correo al evaluador antes del jueves a las 5:00 p. m.
+- [ ] Preguntas enviadas por correo al evaluador antes del jueves a las 5:00 p. m. Enviadas el 4 nov y respondidas (ver `docs/Ajuste_jueves.md`): el prefijo `/api` se acepta (indicarlo en el README y en los curl) y las demás situaciones son decisiones nuestras, documentadas y con pruebas donde aplique
 
-### 9. Ajuste del jueves
-- [ ] Requisito analizado: qué cambia y qué partes afecta
-- [ ] Implementado con pruebas
-- [ ] Decisiones documentadas
+Situaciones nuevas que abre el ajuste del jueves (decisiones nuestras):
+- [ ] Una fecha de la serie cae en festivo o incumple otra regla: ¿se rechaza toda la serie o se salta esa fecha? (propuesta: se rechaza todo, porque así lo pide el "todo o nada")
+- [ ] Formato de la respuesta con varias fechas fallidas: qué va en `"regla"` y si se lista uno o todos los errores de cada fecha (propuesta: `"regla": "SERIE"` y el primer error de cada fecha)
+- [ ] Rutas para cancelar: una fecha con la ruta que ya existe y la serie con `POST /reservas/series/{serieId}/cancelar`
+- [ ] R7 al cancelar la serie: qué pasa con las fechas que ya pasaron, las que están a menos de 2 horas o las que ya están canceladas (propuesta: se cancelan solo las que todavía se pueden y se omiten las demás; si no queda ninguna, 409)
+- [ ] Serie en el auditorio: cada fecha queda PENDIENTE por R8. ¿Se aprueba la serie completa o cada fecha? (propuesta: una por una, con las rutas existentes)
+- [ ] ESTUDIANTE que intenta crear una serie, o número de semanas fuera de 2 a 16 o no entero: código HTTP y valor de `"regla"`
+
+### 9. Ajuste del jueves: reservas recurrentes
+Qué pide: DOCENTE y ADMINISTRATIVO pueden reservar el mismo espacio, el mismo día de la semana y el mismo horario durante 2 a 16 semanas seguidas. Las rutas quedan bajo `/api` como el resto (aceptado por el evaluador).
+- [ ] Requisito analizado: qué cambia (una ruta nueva, una columna nueva y cancelar por serie) y qué se reutiliza (todas las reglas de R1 a R8)
+- [ ] Esquema: columna `serie_id` (entero, nulo en las reservas simples) en `reservas`, para vincular las fechas de una serie
+- [ ] Regla de serie pura: solo DOCENTE o ADMINISTRATIVO, y semanas entero de 2 a 16. Con pruebas en los límites (1, 2, 16 y 17 semanas)
+- [ ] Generar las fechas (función pura): la primera es la de la petición y cada una de las siguientes suma 7 días con la misma hora. Basta con sumar horas porque Bogotá tiene un desfase fijo
+- [ ] Validar cada fecha con `validarReserva`. R6 se aplica completo a la primera fecha y no a las siguientes: el ajuste quita el máximo de 30 días y el mínimo de 24 horas se cumple solo, porque son posteriores a la primera
+- [ ] `POST /api/reservas/recurrentes`: datos de una reserva más `semanas`. Todo o nada en una transacción. Si algo falla, responde 422 con `{"regla": "SERIE", "mensaje": "...", "fechas": [{"fecha", "regla", "mensaje"}]}`
+- [ ] Cancelar una sola fecha con `POST /api/reservas/{id}/cancelar` (ya existe, aplica R7) y la serie completa con `POST /api/reservas/series/{serieId}/cancelar` (misma regla de permisos de R7)
+- [ ] Pruebas del ajuste: serie válida, serie que cruza un festivo (16 de noviembre) y se rechaza completa, traslape en una sola fecha, ESTUDIANTE rechazado, R6 solo en la primera fecha (una serie de 16 semanas que termina a más de 30 días es válida) y cancelar la serie
+- [ ] Decisiones documentadas en `DECISIONES.md` con sus alternativas
 
 ### 10. Entregables
 - [ ] `README.md` probado desde cero en menos de 5 minutos
