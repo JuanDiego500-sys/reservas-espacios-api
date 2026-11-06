@@ -8,6 +8,12 @@ CREATE EXTENSION IF NOT EXISTS btree_gist;
 -- Primero reservas, porque depende de espacios (llave foránea).
 DROP TABLE IF EXISTS reservas;
 DROP TABLE IF EXISTS espacios;
+DROP SEQUENCE IF EXISTS series_id_seq;
+
+-- Genera un número único para cada serie de reservas recurrentes.
+-- El servicio pide uno con nextval('series_id_seq') y lo pone en todas las fechas de la serie.
+-- Un ROLLBACK no devuelve el número: puede haber huecos, y no importa porque es solo una etiqueta.
+CREATE SEQUENCE series_id_seq;
 
 CREATE TABLE espacios (
   codigo     text    PRIMARY KEY,
@@ -29,6 +35,8 @@ CREATE TABLE reservas (
   solicitante     text        NOT NULL,
   rol             text        NOT NULL CHECK (rol IN ('ESTUDIANTE', 'DOCENTE', 'ADMINISTRATIVO')),
   estado          text        NOT NULL CHECK (estado IN ('PENDIENTE', 'CONFIRMADA', 'RECHAZADA', 'CANCELADA')),
+  -- Etiqueta que agrupa las reservas de una misma serie. Nula en una reserva simple.
+  serie_id        integer,
 
   CONSTRAINT reservas_fin_despues_de_inicio CHECK (fin > inicio),
 

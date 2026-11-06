@@ -12,9 +12,11 @@
     },
     "dependencies": {
         "@astrojs/node": "^11.1.9",
-        "astro": "^7.4.5"
+        "astro": "^7.4.5",
+        "pg": "^8.23.1"
     },
     "devDependencies": {
+        "@types/pg": "^8.23.1",
         "typescript": "^7.0.2",
         "vitest": "^5.1.0"
     }
