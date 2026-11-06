@@ -1,8 +1,9 @@
-import type { PoolClient } from 'pg';
+import type { Pool, PoolClient } from 'pg';
 import type { EstadoReserva, ReservaExistente, TipoEspacio, TipoRol } from '../reglas/tipos';
 
-// Todas las funciones reciben "client": la conexión de la transacción que abrió el servicio.
+// Las funciones reciben "client": la conexión de la transacción que abrió el servicio.
 // Así cada consulta va por la misma conexión que el BEGIN y el COMMIT.
+// buscarEspacio y reservasActivasDelEspacio también aceptan el pool, para las consultas sin transacción.
 
 // Columnas que se devuelven al cliente. fecha, inicio y fin salen como texto en hora de Bogotá
 // ("2026-11-10", "08:00"), igual que en la petición, en vez de un instante en UTC.
@@ -13,7 +14,7 @@ export const COLUMNAS_RESERVA = `
     asistentes, motivo, solicitante, rol, estado, serie_id`;
 
 /** Busca un espacio por código. Devuelve null si no existe. */
-export async function buscarEspacio(client: PoolClient, codigo: string) {
+export async function buscarEspacio(client: Pool | PoolClient, codigo: string) {
     const resultado = await client.query(
         'SELECT codigo, nombre, tipo, capacidad, activo FROM espacios WHERE codigo = $1',
         [codigo],
@@ -23,7 +24,7 @@ export async function buscarEspacio(client: PoolClient, codigo: string) {
 }
 
 /** Reservas PENDIENTE o CONFIRMADA del espacio: las que pueden chocar en R1. */
-export async function reservasActivasDelEspacio(client: PoolClient, codigo: string): Promise<ReservaExistente[]> {
+export async function reservasActivasDelEspacio(client: Pool | PoolClient, codigo: string): Promise<ReservaExistente[]> {
     const resultado = await client.query(
         `SELECT inicio, fin, estado FROM reservas
           WHERE espacio_codigo = $1 AND estado IN ('PENDIENTE', 'CONFIRMADA')`,
@@ -100,6 +101,26 @@ export async function cambiarEstado(client: PoolClient, ids: number[], estado: E
         `UPDATE reservas SET estado = $2 WHERE id = ANY($1::int[])
          RETURNING ${COLUMNAS_RESERVA}`,
         [ids, estado],
+    );
+    return resultado.rows;
+}
+
+/**
+ * GET /reservas: lista con filtros opcionales, ordenada por inicio. Cada filtro que llega como null no filtra:
+ * "$1::text IS NULL OR ..." es verdadero para todas las filas cuando no se pasó ese filtro.
+ * fecha compara contra la columna generada (día en Bogotá, decisión 8).
+ */
+export async function listarReservas(pool: Pool, filtros: {
+    espacio: string | null; fecha: string | null; solicitante: string | null; estado: string | null;
+}) {
+    const resultado = await pool.query(
+        `SELECT ${COLUMNAS_RESERVA} FROM reservas
+          WHERE ($1::text IS NULL OR espacio_codigo = $1)
+            AND ($2::date IS NULL OR fecha = $2)
+            AND ($3::text IS NULL OR solicitante = $3)
+            AND ($4::text IS NULL OR estado = $4)
+          ORDER BY inicio`,
+        [filtros.espacio, filtros.fecha, filtros.solicitante, filtros.estado],
     );
     return resultado.rows;
 }

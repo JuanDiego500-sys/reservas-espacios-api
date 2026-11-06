@@ -1,8 +1,7 @@
-import { error } from '../_http';
+import { error, esFechaValida } from '../_http';
 
-// Formatos aceptados: fecha AAAA-MM-DD y hora HH:MM de 00:00 a 23:59.
+// Formato de hora aceptado: HH:MM de 00:00 a 23:59. La fecha la revisa esFechaValida (_http.ts).
 // Que los minutos sean :00 o :30 no se revisa aquí: es R3 y responde con su propia regla.
-const FECHA = /^\d{4}-\d{2}-\d{2}$/;
 const HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 /** Datos de una reserva ya revisados y convertidos, listos para el servicio. */
@@ -18,7 +17,7 @@ export function validarCuerpoReserva(cuerpo: Record<string, unknown>): DatosRese
     if (typeof espacio !== 'string' || espacio.trim() === '') {
         return error(400, 'VALIDACION', 'espacio es obligatorio y debe ser texto');
     }
-    if (typeof fecha !== 'string' || !FECHA.test(fecha) || !esFechaReal(fecha)) {
+    if (typeof fecha !== 'string' || !esFechaValida(fecha)) {
         return error(400, 'VALIDACION', 'fecha debe tener el formato AAAA-MM-DD y ser una fecha que exista');
     }
     if (typeof inicio !== 'string' || !HORA.test(inicio)) {
@@ -44,9 +43,3 @@ export function validarCuerpoReserva(cuerpo: Record<string, unknown>): DatosRese
     };
 }
 
-// "2026-02-30" cumple el formato pero no existe. Si al convertirla en Date y volverla texto
-// sale otra fecha (o ninguna), no es real.
-function esFechaReal(fecha: string): boolean {
-    const d = new Date(`${fecha}T00:00:00Z`);
-    return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === fecha;
-}

@@ -62,3 +62,13 @@ export function leerId(valor: string | undefined): number | null {
     const numero = Number(valor);
     return Number.isInteger(numero) && numero > 0 ? numero : null;
 }
+
+/**
+ * true si el texto es una fecha AAAA-MM-DD que existe. "2026-02-30" cumple el formato pero no existe:
+ * al convertirla en Date y volverla texto sale otra fecha (o ninguna), así que se rechaza.
+ */
+export function esFechaValida(texto: string): boolean {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(texto)) return false;
+    const d = new Date(`${texto}T00:00:00Z`);
+    return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === texto;
+}
