@@ -41,6 +41,15 @@ export async function reservasDelSolicitante(client: PoolClient, correo: string)
     return resultado.rows;
 }
 
+/**
+ * Pide un número nuevo a la secuencia de series. Se llama UNA vez por serie y se usa en todas sus fechas.
+ * ::int porque nextval devuelve bigint, y pg entrega los bigint como texto ("1") en vez de número.
+ */
+export async function nuevoSerieId(client: PoolClient): Promise<number> {
+    const resultado = await client.query("SELECT nextval('series_id_seq')::int AS id");
+    return resultado.rows[0].id;
+}
+
 /** Inserta una reserva y la devuelve con COLUMNAS_RESERVA. serieId es null en una reserva simple. */
 export async function insertarReserva(client: PoolClient, datos: {
     espacio: string; inicio: Date; fin: Date; asistentes: number; motivo: string;

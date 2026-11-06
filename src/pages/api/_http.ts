@@ -23,6 +23,7 @@ const CODIGOS: Record<string, number> = {
     NO_ENCONTRADO: 404,
     CONFLICTO: 409,
     R1: 409,
+    SERIE: 403,      // ESTUDIANTE que intenta crear una serie. Las fechas fallidas (422) se responden aparte.
 };
 
 /** Convierte un error que devolvió un servicio o una regla en la respuesta HTTP que le corresponde. */
