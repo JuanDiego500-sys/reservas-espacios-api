@@ -21,6 +21,15 @@ export function errorDeRegla(e: ErrorRegla): Response {
     return error(e.regla === 'R1' ? 409 : 422, e.regla, e.mensaje);
 }
 
+/**
+ * Lee el cuerpo JSON de la petición. Devuelve null si no es un JSON válido o si no es un objeto {...}
+ * (por ejemplo 5, "hola" o [1, 2]). El endpoint responde 400 en ese caso.
+ */
+export async function leerCuerpo(request: Request): Promise<Record<string, unknown> | null> {
+    const cuerpo = await request.json().catch(() => null);
+    return typeof cuerpo === 'object' && cuerpo !== null && !Array.isArray(cuerpo) ? cuerpo : null;
+}
+
 /** Lee X-Usuario y X-Rol. Devuelve la identidad o, si algo falla, la respuesta 401 lista para enviar. */
 export function leerIdentidad(request: Request): { usuario: string; rol: TipoRol } | Response {
     const usuario = request.headers.get('X-Usuario')?.trim();
