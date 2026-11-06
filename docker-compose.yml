@@ -1,8 +1,10 @@
-services:
+﻿services:
   db:
     image: postgres:17
     ports:
-      - "5432:5432"
+      # Puerto de Windows : puerto del contenedor. Se usa 55432 afuera para no chocar
+      # con un PostgreSQL instalado localmente, que suele ocupar el 5432 o el 5433.
+      - "55432:5432"
     environment:
       POSTGRES_USER: reservas
       POSTGRES_PASSWORD: reservas
