@@ -16,9 +16,18 @@ export function error(estado: number, regla: string, mensaje: string): Response 
     return json({ regla, mensaje }, estado);
 }
 
-/** Respuesta para el error de una regla: R1 es 409 (choca con otra reserva) y las demás 422 (decisión 18). */
+// Código HTTP de cada valor de "regla" (tabla de la decisión 18). Lo que no está aquí (R2 a R7) es 422.
+const CODIGOS: Record<string, number> = {
+    VALIDACION: 400,
+    PERMISO: 403,
+    NO_ENCONTRADO: 404,
+    CONFLICTO: 409,
+    R1: 409,
+};
+
+/** Convierte un error que devolvió un servicio o una regla en la respuesta HTTP que le corresponde. */
 export function errorDeRegla(e: ErrorRegla): Response {
-    return error(e.regla === 'R1' ? 409 : 422, e.regla, e.mensaje);
+    return error(CODIGOS[e.regla] ?? 422, e.regla, e.mensaje);
 }
 
 /**
