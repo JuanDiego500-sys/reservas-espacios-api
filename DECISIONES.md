@@ -6,7 +6,7 @@
   - aceptar el prefijo y documentarlo;
   - redirecciones en `astro.config.mjs` (`curl` no las sigue por defecto y un POST puede perder el cuerpo);
   - un middleware que reescriba `/espacios` como `/api/espacios` (más código que explicar y probar).
-- **Decisión:** aceptar `/api`. Las rutas quedan `/api/espacios`, `/api/reservas`, etc. Se le preguntó al evaluador por correo; si pide las rutas sin prefijo, se agrega el middleware.
+- **Decisión:** aceptar `/api`. Las rutas quedan `/api/espacios`, `/api/reservas`, etc. Se le preguntó al evaluador por correo y respondió que está bien, indicándolo en el README y en la documentación de la API.
 
 ## 2. PostgreSQL 17 con una versión fija
 - **Alternativas:** `postgres:latest`, `postgres:18` y `postgres:17`.
@@ -120,7 +120,7 @@
 | Situación | HTTP | `"regla"` |
 | --- | --- | --- |
 | Encabezados `X-Usuario` o `X-Rol` ausentes, correo sin `@` o rol inválido | 401 | `IDENTIFICACION` |
-| Cuerpo inválido: campos faltantes, fecha que no es `AAAA-MM-DD` real, hora que no es `HH:MM`, asistentes no enteros, motivo vacío, tipo de espacio inválido | 400 | `VALIDACION` |
+| Cuerpo inválido: campos faltantes, fecha que no es `AAAA-MM-DD` real, hora que no es `HH:MM`, asistentes no enteros, motivo vacío, tipo de espacio inválido, `semanas` no entero o fuera de 2 a 16 | 400 | `VALIDACION` |
 | La acción es solo para ADMINISTRATIVO (crear espacio, aprobar, rechazar) | 403 | `PERMISO` |
 | ESTUDIANTE que intenta crear una serie | 403 | `SERIE` |
 | Espacio o reserva que no existe | 404 | `NO_ENCONTRADO` |
@@ -156,3 +156,86 @@
 - Código duplicado → 409 `CONFLICTO` (la llave primaria de PostgreSQL lo garantiza aunque lleguen dos peticiones a la vez).
 - Tipo distinto de LAB, SALA o AUDITORIO → 400 `VALIDACION`. El `CHECK` de `schema.sql` es la segunda barrera.
 - Capacidad: entero mayor que 0. `activo` es opcional y vale `true` por defecto.
+
+## 24. Reservas recurrentes: cómo se validan las fechas
+- **Contexto:** el ajuste del jueves pide series semanales de 2 a 16 semanas, "todo o nada", que deben cumplir las mismas reglas.
+- **Alternativas:**
+  - escribir una validación aparte para las series;
+  - usar una sola función para todas las reservas.
+- **Decisión:** una sola función pura, `validarReserva`. `POST /reservas` la llama una vez y `POST /reservas/recurrentes` la llama una vez por semana. Si una regla cambia, se cambia en un solo lugar.
+- `generarFechas` suma 7 días a inicio y fin. Basta con sumar milisegundos porque Bogotá no tiene horario de verano (decisión 4).
+
+## 25. Todo o nada en una transacción
+- **Alternativas:**
+  - insertar fecha por fecha y borrar lo creado si una falla;
+  - validar todas las fechas primero e insertar después, en una sola transacción;
+  - crear las fechas válidas y saltarse las que fallan.
+- **Decisión:** validar primero e insertar después, dentro de `BEGIN` y `COMMIT`. Si alguna fecha falla, se hace `ROLLBACK`, no se inserta ninguna y se responde la lista completa. Si dos peticiones chocan justo al insertar, `EXCLUDE` rechaza la segunda y el `ROLLBACK` deshace toda su serie.
+- **Festivos:** una fecha en festivo rechaza toda la serie. Saltarla contradiría el "si alguna fecha incumple una regla, no se crea ninguna" del ajuste.
+- **Consecuencia aceptada:** casi cualquier serie larga cruza un festivo (16/11, 8/12, 25/12, 1/1 y 11/1). El cliente lo ve en la lista y puede ajustar el día o las semanas.
+
+## 26. Formato de la respuesta cuando una serie falla
+- **Alternativas:**
+  - todos los errores de cada fecha;
+  - solo el primer error de cada fecha, en el orden de la decisión 17;
+  - solo la primera fecha que falla.
+- **Decisión:** `{"regla": "SERIE", "mensaje": "...", "fechas": [{"fecha", "regla", "mensaje"}]}`, con 422 y el primer error de cada fecha. Se recorren todas las fechas porque el ajuste pide listar cada una con su problema. Usar el primer error de cada fecha reutiliza `validarReserva` sin cambiarla y mantiene el formato de un error por regla.
+- **Caso aparte:** si `EXCLUDE` rechaza la serie porque otra petición llegó al mismo tiempo, se responde 409 `R1` sin la lista, porque PostgreSQL no indica de forma simple cuál fecha chocó.
+
+## 27. R6 en las series
+- **Decisión:** R6 completa (mínimo 24 horas y máximo 30 días) se aplica a la primera fecha. Las demás usan `omitirR6: true`.
+  - El máximo de 30 días lo quita el ajuste.
+  - El mínimo de 24 horas se cumple solo, porque las demás fechas son posteriores a la primera.
+- **Alternativa descartada:** seguir revisando el mínimo en cada fecha. Sería una condición que nunca falla.
+
+## 28. Vínculo entre las reservas de una serie
+- **Alternativas:**
+  - una tabla `series` con llave foránea;
+  - el `id` de la primera reserva como `serie_id`;
+  - `MAX(serie_id) + 1`;
+  - una columna `serie_id` que toma su valor de una secuencia de PostgreSQL.
+- **Decisión:** columna `serie_id` con la secuencia `series_id_seq`, nula en las reservas simples.
+  - La serie no tiene datos propios, así que una tabla sobraría.
+  - `MAX + 1` puede repetir el número si dos peticiones llegan al mismo tiempo.
+  - El `id` de la primera reserva obligaría a insertarla y actualizarla después.
+  - La secuencia entrega siempre un número único. Un `ROLLBACK` no devuelve el número y pueden quedar huecos, lo cual no importa porque es solo una etiqueta.
+
+## 29. Quién crea series y cómo se cancelan
+- **ESTUDIANTE:** 403 `SERIE`. Se revisa en `validarSerie`, antes de consultar la base de datos.
+- **Semanas:** no entero o fuera de 2 a 16 → 400 `VALIDACION`. Hay pruebas con 1, 2, 16 y 17.
+- **Cancelar una fecha:** `POST /reservas/{id}/cancelar`, la ruta que ya existía, con R7.
+- **Cancelar la serie:** `POST /reservas/series/{serieId}/cancelar`.
+- **Fechas que ya no se pueden cancelar:**
+  - **Alternativas:** rechazar toda la cancelación si una fecha no se puede cancelar, o cancelar solo las que se pueden y omitir las demás.
+  - **Decisión:** cancelar las que se pueden y responder `{"canceladas": [...], "omitidas": N}`. Una fecha ya pasada o a menos de 2 horas no debe impedir liberar las siguientes. El "todo o nada" del ajuste habla de crear, no de cancelar.
+  - Si no queda ninguna por cancelar → 409 `CONFLICTO`. Si quien pide no tiene permiso → 422 `R7`, como al cancelar una sola fecha.
+  - El ADMINISTRATIVO no tiene plazo (decisión 12), así que también puede cancelar las fechas a menos de 2 horas.
+
+## 30. Series en el auditorio
+- **Alternativas:** aprobar la serie completa con una ruta nueva, o aprobar cada fecha con las rutas existentes.
+- **Decisión:** cada fecha queda PENDIENTE por R8 y se aprueba o rechaza una por una. El ajuste no pide una aprobación conjunta, y así no se agrega una ruta nueva.
+
+## 31. Puerto 55432 para la base de datos
+- **Contexto:** en mi computador hay dos PostgreSQL instalados en Windows que ocupan los puertos 5432 y 5433. La API llegaba a uno de ellos y fallaba con "la autentificación password falló".
+- **Alternativas:**
+  - detener los servicios locales (el README tendría que pedirle lo mismo al evaluador);
+  - usar un puerto poco común, afuera del contenedor.
+- **Decisión:** publicar el contenedor en el 55432 (`"55432:5432"`). Dentro del contenedor sigue siendo el 5432. Evita el mismo choque en otro computador. `DATABASE_URL` permite cambiar la conexión.
+
+## 32. Candado `FOR UPDATE` al cambiar el estado
+- **Contexto:** dos peticiones simultáneas podrían leer la misma reserva como PENDIENTE; una la aprueba y la otra la rechaza. El estado final dependería de cuál escribe de último.
+- **Alternativas:** no proteger este caso; un `UPDATE ... WHERE estado = 'PENDIENTE'` que revisa las filas afectadas; o `SELECT ... FOR UPDATE` dentro de una transacción.
+- **Decisión:** `FOR UPDATE`. La segunda petición espera el `COMMIT` de la primera y lee el estado nuevo, así que responde 409. Las reglas siguen en el código y no dentro del `UPDATE`.
+
+## 33. Identificación estricta en todas las rutas
+- **Alternativas:** exigir los encabezados solo en las rutas que escriben, o en todas.
+- **Decisión:** en todas, incluidos los GET, porque el enunciado dice "cada petición trae los encabezados".
+- **Rol:** debe ser exacto y en mayúsculas. `docente` responde 401: el enunciado define esos tres valores, y aceptar variantes sería una regla más sin que nadie la pida.
+- **Correo:** solo se revisa que traiga `@`. La identificación es simulada, así que validar más no aporta seguridad.
+- **Por qué 401 y no 400:** el problema es no saber quién pide, no el contenido de la petición.
+
+## 34. Límites conocidos
+Se aceptan para mantener el proyecto simple, y se dejan escritos para no ocultarlos.
+- **R5 ante peticiones simultáneas:** R1 tiene `EXCLUDE`, pero el máximo de 2 reservas activas solo se revisa en el servicio. Dos peticiones simultáneas del mismo estudiante podrían dejarlo con 3. Para evitarlo haría falta un candado por solicitante. Se priorizó R1 porque un cruce deja a dos personas con el mismo espacio; una reserva de más no causa ese conflicto.
+- **Identidad sin verificar:** cualquiera puede enviar `X-Rol: ADMINISTRATIVO`. Lo pide así el enunciado; en un sistema real el rol saldría de un inicio de sesión.
+- **Sin paginación:** `GET /reservas` devuelve todas las filas que coinciden con los filtros. Con pocas reservas no hace falta.

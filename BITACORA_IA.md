@@ -125,6 +125,19 @@
 - **Qué cambié o decidí yo:**
   > Escribí cada paso y lo comprobé recorriendo las pruebas a mano. Al final encontré yo solo un error de lógica: dejé el `return` temporal con `ids: []`, así que la función siempre devolvía la lista vacía aunque hubiera fechas para cancelar. Lo cambié por `{ error: null, ids }` y pasaron las 81 pruebas. Aprendí que dividir una función en pasos pequeños, cada uno comprobado, me funciona mejor que recibir todas las pistas juntas.
 
+### Prompt 10: [Preguntas de cierre de `crearReserva`: lo que no sabía]
+- **Fecha y commit:**
+  > 5/11/2026, 22:14, después del commit `b20c05b`
+- **Contexto:** al terminar `POST /reservas`, la IA me hizo 4 preguntas: por qué va `ROLLBACK` antes de cada `return` con error, por qué `new Date()` está en el endpoint, por qué validar el cuerpo antes de `validarReserva` y qué recibe la segunda persona si se borra el `if` del código `23P01`.
+- **Texto literal:**
+  > 1. para cerrar la transaccion antes de salir. 2. no se 3. porque si el json está mal formado no vale la pena pasarlo a otro método. 4. recibe un error de la base de datos por el exclude pero no se cual
+- **Qué obtuve:** la IA me corrigió con explicaciones concretas:
+  - `new Date()` va en el endpoint para probar R6 y R7 con una hora fija, sin esperar ni cambiar el reloj.
+  - El cuerpo se valida primero porque las reglas revisan el negocio y no el formato: 2.5 asistentes pasaría R4.
+  - Sin el `if` del `23P01`, el error sube hasta el `throw` y la segunda persona recibe un 500 en vez del error de R1.
+- **Qué cambié o decidí yo:**
+  > No cambié el código, porque las preguntas eran para comprobar si lo entendía. Respondí "no se" en la pregunta 2 en vez de inventar, y estos temas quedaron para repasar antes de la entrevista.
+
 ## Respuestas incorrectas de la IA
 | Qué propuso | Por qué estaba mal | Cómo lo noté | Cómo lo corregí |
 | --- | --- | --- | --- |
@@ -140,6 +153,7 @@
 | 5/11/2026: cambió el puerto con `Get-Content` y `Set-Content` de PowerShell 5.1 | PowerShell leyó `conexion.ts` con la codificación de Windows en vez de UTF-8 y dañó las tildes de los comentarios (`DÃ³nde` en vez de `Dónde`), además de agregar un carácter invisible (BOM) al inicio | La IA lo vio en el diff que mostró la herramienta después del cambio | Reescribió los dos archivos limpios y quitó el BOM antes de mi commit |
 | 5/11/2026: para diagnosticar el 500 corrió `Get-Service` y `netstat` sin preguntarme | Eran comandos de solo lectura y no ejecutaban la aplicación, pero CLAUDE.md pide que la IA me dé los comandos y que yo los corra | La IA lo informó al escribir esta bitácora | Desde aquí, la IA me pide los diagnósticos también |
 | 5/11/2026: me dio los curl de `POST /api/espacios` con el JSON entre comillas simples y `\"` adentro | En PowerShell 5.1 ese JSON se parte en los espacios (`"Laboratorio de pruebas"`) y `curl` respondió `Could not resolve host: de`. La IA no lo probó con un valor que tuviera espacios | Lo vi yo al correr el primer comando | Cambió los comandos a `curl.exe --% ... -d "{\"codigo\":...}"`; `--%` hace que PowerShell pase el resto tal cual |
+| 5/11/2026: al crear `DECISIONES.md` dejó en la decisión 1 "si pide las rutas sin prefijo, se agrega el middleware" y no la actualizó cuando llegó la respuesta del evaluador | El documento quedó desactualizado: el evaluador ya había aceptado `/api` | La IA lo vio el 6/11 al revisar el documento antes de la entrega | Actualizó la decisión 1 con la respuesta del evaluador |
 
 ## Partes escritas sin IA
 Nota: en el punto 1 escribí estos archivos yo mismo, pero con pistas de la IA. La IA no los escribió, aunque sí me dio algunos fragmentos cuando dije que no sabía.
@@ -192,6 +206,15 @@ Nota: en el punto 1 escribí estos archivos yo mismo, pero con pistas de la IA. 
 
   Las 6 pruebas de `tests/cancelar-serie.test.ts` las escribió la IA con los casos que acordamos, y también el JSDoc de la función.
 - Comentarios del código en `src/reglas/` (5/11/2026): los escribió la IA a mi pedido (commit `1207ab1` y el de `serie.ts`). Son JSDoc por función con la referencia a cada decisión y comentarios en las líneas donde el porqué no es obvio. No cambian el código.
+- `crearReserva` en `src/servicios/reservas.ts` (5/11/2026, commit `b20c05b`): **no es un trabajo sin IA.** La armé paso a paso con plantillas de la IA con espacios en blanco: yo completé los valores (`BEGIN`, `COMMIT`, `ROLLBACK`, `release`, los datos de cada llamada y el código de regla) y la IA escribió el resto de la estructura, incluidos los mensajes y el `catch` del `23P01`. Errores que corregí: pegué el bloque fuera de la función, no guardé el archivo y dejé dos `catch` al pegar el último paso.
+
+### Escrito por la IA, con mi revisión
+Lo aprobé y lo probé con curl, pero no lo escribí. La IA me explicó cada parte y sigo repasándolo para la entrevista:
+- `src/db/conexion.ts`, `src/db/espacios.ts` y `src/db/reservas.ts`.
+- `src/pages/api/_http.ts`, `src/pages/api/reservas/_cuerpo.ts` y todos los endpoints de `src/pages/api/`.
+- En `src/servicios/reservas.ts`: `crearSerie`, `enTransaccion`, `cancelarReserva`, `decidirReserva` y `cancelarSerie`.
+- `src/servicios/espacios.ts`, `src/reglas/disponibilidad.ts` y `tests/disponibilidad.test.ts`.
+- `README.md`, `docs/ejemplos_curl.md` y la redacción de `DECISIONES.md`. Las decisiones las tomé yo a partir de las opciones que me presentó la IA, y varias propuestas las acepté como venían.
 
 ## Qué aprendí
 - `output: 'server'` y `adapter`: el primero hace que Astro atienda cada petición en el momento; el segundo define el runtime donde corre (Node, Vercel...). Aplicado en `astro.config.mjs`.
@@ -229,3 +252,6 @@ Nota: en el punto 1 escribí estos archivos yo mismo, pero con pistas de la IA. 
 - El autocompletado del editor puede agregar imports en silencio (`astro:schema`). Hay que revisar las primeras líneas del archivo. En la entrevista estará desactivado.
 - Un `return` temporal para que la función compile ayuda a avanzar por pasos, pero hay que acordarse de reemplazarlo al final.
 - Una serie de 8 semanas tiene fechas a más de 30 días: sin omitir R6 desde la segunda fecha, el ajuste no funcionaría.
+- Una transacción (`BEGIN`, `COMMIT`, `ROLLBACK`) agrupa varios cambios para que se guarden todos o ninguno. `try / catch / finally` garantiza que la conexión vuelva al pool aunque algo falle.
+- El mapeo de puertos de Docker (`"55432:5432"`) va de afuera hacia adentro. Si un PostgreSQL local ya ocupa el puerto, la API le habla a ese y no al contenedor.
+- Las rutas de Astro salen de las carpetas: `[id]` es una parte variable de la URL y un archivo que empieza con `_` no se publica como ruta.
