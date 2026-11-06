@@ -35,11 +35,11 @@ Son 86 pruebas de las reglas. No necesitan la base de datos ni la API, porque la
 
 Con `npm run dev` corriendo, en otra terminal:
 
-```bash
-curl -i -H "X-Usuario: docente1@ejemplo.edu.co" -H "X-Rol: DOCENTE" http://localhost:4321/api/espacios
+```powershell
+curl.exe --% -i -H "X-Usuario: docente1@ejemplo.edu.co" -H "X-Rol: DOCENTE" "http://localhost:4321/api/espacios"
 ```
 
-Debe responder `200` con los 7 espacios. En PowerShell escribe `curl.exe --%` en lugar de `curl`.
+Debe responder `200` con los 7 espacios. El comando está escrito para PowerShell. En `cmd`, Git Bash, Linux o macOS, cambia `curl.exe --%` por `curl`.
 
 El recorrido completo está en [docs/ejemplos_curl.md](docs/ejemplos_curl.md).
 
