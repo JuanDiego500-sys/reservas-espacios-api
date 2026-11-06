@@ -56,3 +56,9 @@ export function leerIdentidad(request: Request): { usuario: string; rol: TipoRol
     }
     return { usuario, rol: rol as TipoRol };
 }
+
+/** Convierte el id de la ruta (/reservas/7/cancelar → "7") en número. null si no es un entero positivo. */
+export function leerId(valor: string | undefined): number | null {
+    const numero = Number(valor);
+    return Number.isInteger(numero) && numero > 0 ? numero : null;
+}

@@ -1,9 +1,14 @@
 import { pool } from '../db/conexion';
+import type { PoolClient } from 'pg';
 import type { ErrorRegla, TipoRol } from '../reglas/tipos';
-import { buscarEspacio, reservasActivasDelEspacio , reservasDelSolicitante, insertarReserva, nuevoSerieId } from '../db/reservas';
+import {
+    buscarEspacio, reservasActivasDelEspacio, reservasDelSolicitante, insertarReserva, nuevoSerieId,
+    buscarReservaParaCambiar, reservasDeSerieParaCambiar, cambiarEstado,
+} from '../db/reservas';
 import { validarReserva } from '../reglas/validar';
 import { estadoInicial } from '../reglas/r8';
-import { generarFechas, validarFechasSerie } from '../reglas/serie';
+import { cancelablesDeSerie, generarFechas, validarFechasSerie } from '../reglas/serie';
+import { validarRegla7 } from '../reglas/r7';
 
 export async function crearReserva(
     datos: { espacio: string; inicio: Date; fin: Date; asistentes: number; motivo: string },
@@ -146,4 +151,89 @@ export async function crearSerie(
     } finally {
         client.release();
     }
+}
+
+// ---------------------------------------------------------------------------
+// Cambios de estado: cancelar, aprobar, rechazar y cancelar la serie.
+// Los cuatro siguen el mismo camino, así que lo escribimos una sola vez en enTransaccion.
+// ---------------------------------------------------------------------------
+
+type Resultado = { error: ErrorRegla | null; datos: unknown };
+
+/**
+ * Abre la transacción, ejecuta los pasos que recibe y cierra:
+ * COMMIT si los pasos no devolvieron error, ROLLBACK si lo devolvieron o si algo explotó.
+ * "pasos" es una función: cada servicio le pasa lo que tiene que hacer con la conexión.
+ */
+async function enTransaccion(pasos: (client: PoolClient) => Promise<Resultado>): Promise<Resultado> {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const resultado = await pasos(client);
+        await client.query(resultado.error ? 'ROLLBACK' : 'COMMIT');
+        return resultado;
+    } catch (e) {
+        await client.query('ROLLBACK');
+        throw e;
+    } finally {
+        client.release();
+    }
+}
+
+/** POST /reservas/{id}/cancelar: 404, ya inactiva → 409 (decisión 11) y luego R7 (permiso y plazo). */
+export function cancelarReserva(id: number, identidad: { usuario: string; rol: TipoRol }, ahora: Date): Promise<Resultado> {
+    return enTransaccion(async (client) => {
+        const reserva = await buscarReservaParaCambiar(client, id);
+        if (reserva === null) {
+            return { error: { regla: 'NO_ENCONTRADO', mensaje: `No existe la reserva ${id}` }, datos: null };
+        }
+        if (reserva.estado === 'CANCELADA' || reserva.estado === 'RECHAZADA') {
+            return { error: { regla: 'CONFLICTO', mensaje: `La reserva ${id} ya está ${reserva.estado}` }, datos: null };
+        }
+        const error = validarRegla7(reserva, identidad.usuario, identidad.rol, ahora);
+        if (error) return { error, datos: null };
+
+        const [cancelada] = await cambiarEstado(client, [id], 'CANCELADA');
+        return { error: null, datos: cancelada };
+    });
+}
+
+/**
+ * POST /reservas/{id}/aprobar y /rechazar (R8): solo ADMINISTRATIVO (403), 404, solo si está PENDIENTE (409).
+ * Aprobar una reserva que ya empezó → 409; rechazarla sí se permite (decisión 20).
+ */
+export function decidirReserva(id: number, nuevoEstado: 'CONFIRMADA' | 'RECHAZADA', identidad: { usuario: string; rol: TipoRol }, ahora: Date): Promise<Resultado> {
+    return enTransaccion(async (client) => {
+        if (identidad.rol !== 'ADMINISTRATIVO') {
+            return { error: { regla: 'PERMISO', mensaje: 'Solo un ADMINISTRATIVO puede aprobar o rechazar reservas' }, datos: null };
+        }
+        const reserva = await buscarReservaParaCambiar(client, id);
+        if (reserva === null) {
+            return { error: { regla: 'NO_ENCONTRADO', mensaje: `No existe la reserva ${id}` }, datos: null };
+        }
+        if (reserva.estado !== 'PENDIENTE') {
+            return { error: { regla: 'CONFLICTO', mensaje: `La reserva ${id} no está PENDIENTE, está ${reserva.estado}` }, datos: null };
+        }
+        if (nuevoEstado === 'CONFIRMADA' && reserva.inicio.getTime() <= ahora.getTime()) {
+            return { error: { regla: 'CONFLICTO', mensaje: `La reserva ${id} ya empezó y no se puede aprobar` }, datos: null };
+        }
+
+        const [cambiada] = await cambiarEstado(client, [id], nuevoEstado);
+        return { error: null, datos: cambiada };
+    });
+}
+
+/** POST /reservas/series/{serieId}/cancelar: 404 si no existe; cancelablesDeSerie decide permiso y fechas. */
+export function cancelarSerie(serieId: number, identidad: { usuario: string; rol: TipoRol }, ahora: Date): Promise<Resultado> {
+    return enTransaccion(async (client) => {
+        const reservas = await reservasDeSerieParaCambiar(client, serieId);
+        if (reservas.length === 0) {
+            return { error: { regla: 'NO_ENCONTRADO', mensaje: `No existe la serie ${serieId}` }, datos: null };
+        }
+        const { error, ids } = cancelablesDeSerie(reservas, identidad.usuario, identidad.rol, ahora);
+        if (error) return { error, datos: null };
+
+        const canceladas = await cambiarEstado(client, ids, 'CANCELADA');
+        return { error: null, datos: { canceladas, omitidas: reservas.length - ids.length } };
+    });
 }

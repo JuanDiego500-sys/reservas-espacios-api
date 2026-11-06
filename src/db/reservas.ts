@@ -64,3 +64,42 @@ export async function insertarReserva(client: PoolClient, datos: {
     );
     return resultado.rows[0];
 }
+
+/** Reserva que se va a cambiar de estado. */
+export type ReservaParaCambiar = {
+    id: number; inicio: Date; fin: Date; estado: EstadoReserva; solicitante: string; serie_id: number | null;
+};
+
+/**
+ * Busca una reserva por id y le pone un candado (FOR UPDATE) hasta el COMMIT o el ROLLBACK:
+ * si otra petición quiere cambiar la misma reserva, espera a que esta termine. null si no existe.
+ */
+export async function buscarReservaParaCambiar(client: PoolClient, id: number): Promise<ReservaParaCambiar | null> {
+    const resultado = await client.query(
+        'SELECT id, inicio, fin, estado, solicitante, serie_id FROM reservas WHERE id = $1 FOR UPDATE',
+        [id],
+    );
+    return resultado.rows[0] ?? null;
+}
+
+/** Todas las fechas de una serie, ordenadas, con candado. Lista vacía si la serie no existe. */
+export async function reservasDeSerieParaCambiar(client: PoolClient, serieId: number): Promise<ReservaParaCambiar[]> {
+    const resultado = await client.query(
+        'SELECT id, inicio, fin, estado, solicitante, serie_id FROM reservas WHERE serie_id = $1 ORDER BY inicio FOR UPDATE',
+        [serieId],
+    );
+    return resultado.rows;
+}
+
+/**
+ * Cambia el estado de una o varias reservas y las devuelve con COLUMNAS_RESERVA.
+ * "id = ANY($1::int[])" significa "id está en esta lista": pg convierte el arreglo de JavaScript en uno de PostgreSQL.
+ */
+export async function cambiarEstado(client: PoolClient, ids: number[], estado: EstadoReserva) {
+    const resultado = await client.query(
+        `UPDATE reservas SET estado = $2 WHERE id = ANY($1::int[])
+         RETURNING ${COLUMNAS_RESERVA}`,
+        [ids, estado],
+    );
+    return resultado.rows;
+}
