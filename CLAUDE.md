@@ -4,9 +4,9 @@
 Producto mínimo viable, completo y de buen nivel para el Reto A. Debe ser simple, rápido de construir y fácil de explicar.
 Mi meta es aprender: debo poder explicar y modificar todo el código sin IA en una entrevista de 45 minutos.
 
-Fuente de verdad: @docs/Reto_A.md y @docs/Ajuste_jueves.md
+Fuente de verdad: @docs/requirements.md (resumen propio del enunciado y del ajuste del jueves; el texto literal se retiró al publicar el repositorio).
 El ajuste del jueves (reservas recurrentes y respuestas del evaluador) manda sobre el enunciado donde lo modifique.
-Si este archivo y esas dos fuentes se contradicen, mandan ellas: avísame de la contradicción.
+Si este archivo y esa fuente se contradicen, manda ella: avísame de la contradicción.
 
 ## Mi nivel
 Tengo experiencia en infraestructura: Azure, Terraform, Kubernetes y CI/CD.
@@ -70,7 +70,7 @@ Si crees que algo de esto hace falta, avísame antes de implementarlo.
 Una casilla se marca solo si funciona, la ejecución quedó grabada y yo puedo explicar el código.
 
 ### 1. Base del proyecto
-- [ ] Repositorio privado con acceso para dir_tecnologias@umanizales.edu.co y carpeta de grabaciones compartida
+- [ ] Repositorio privado con acceso para el evaluador y carpeta de grabaciones compartida
 - [ ] Astro en modo servidor con TypeScript
 - [ ] `docker-compose.yml` con PostgreSQL
 - [ ] `npm test` funcionando con Vitest
@@ -133,7 +133,7 @@ Una casilla se marca solo si funciona, la ejecución quedó grabada y yo puedo e
 - [ ] Disponibilidad de un espacio inactivo, en domingo o festivo, en fecha pasada, y si tiene en cuenta R6
 - [ ] Quién puede consultar `GET /reservas`: todos los roles o el estudiante solo las suyas
 - [ ] `POST /espacios` con código duplicado y valores válidos de tipo (LAB, SALA, AUDITORIO)
-- [ ] Preguntas enviadas por correo al evaluador antes del jueves a las 5:00 p. m. Enviadas el 4 nov y respondidas (ver `docs/Ajuste_jueves.md`): el prefijo `/api` se acepta (indicarlo en el README y en los curl) y las demás situaciones son decisiones nuestras, documentadas y con pruebas donde aplique
+- [ ] Preguntas enviadas por correo al evaluador antes del jueves a las 5:00 p. m. Enviadas el 4 nov y respondidas (resumen en `docs/requirements.md`): el prefijo `/api` se acepta (indicarlo en el README y en los curl) y las demás situaciones son decisiones nuestras, documentadas y con pruebas donde aplique
 
 Situaciones nuevas que abre el ajuste del jueves (decisiones nuestras):
 - [ ] Una fecha de la serie cae en festivo o incumple otra regla: ¿se rechaza toda la serie o se salta esa fecha? (propuesta: se rechaza todo, porque así lo pide el "todo o nada")
