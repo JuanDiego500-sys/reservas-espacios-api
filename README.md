@@ -1,5 +1,9 @@
 # Room Booking REST API
 
+[![CI](https://github.com/JuanDiego500-sys/reservas-espacios-api/actions/workflows/ci.yml/badge.svg)](https://github.com/JuanDiego500-sys/reservas-espacios-api/actions/workflows/ci.yml)
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
 **English** | [Español](README.es.md)
 
 A REST API for booking computer labs, meeting rooms and an auditorium. It enforces 8 business rules (overlaps, opening hours, capacity, booking window, cancellation, approval) and supports weekly recurring bookings that are created all or nothing.
@@ -139,3 +143,5 @@ The project was built for a Spanish-speaking client, so the code, domain terms (
 ## Author
 
 **Juan Diego Giraldo Ospina**: [GitHub](https://github.com/JuanDiego500-sys) · [LinkedIn](https://www.linkedin.com/in/juandiegogiraldo-softwaredevelopment)
+
+Licensed under the [MIT License](LICENSE).
